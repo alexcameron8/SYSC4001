@@ -328,12 +328,10 @@ void checkCurProcCPUTime(){
   }
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-  //init list of processes
   init_list_of_processes();
-  //read input file
-  readFile("input.txt");
-  //run simulation
+  readFile(argv[1]);
+
   testProcess();
 }
