@@ -107,7 +107,7 @@ fclose(file);
     return 0;
   }
 int outputData(const char *fileName, int time, int pid, enum process_state oldState, enum process_state newState){
-    FILE *file = fopen(fileName,"w");
+    FILE *file = fopen(fileName,"a+");
     if(file == NULL){
       printf("File Exception Error.");
       return 0;
