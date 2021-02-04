@@ -23,7 +23,7 @@ typedef struct process
   int pid;
   //Initial simulated is 0 and the arrival time can be at 0 or any time value thereafter. The time units to be used are milliseconds.
   int arrivalTime;
-  //: it is the total time the process needs to complete (does not include I/O time: only the total time needed in the CPU)
+  // it is the total time the process needs to complete (does not include I/O time: only the total time needed in the CPU)
   int totalCPUTime;
   //the processes are assumed to make an input/output with this frequency
   int ioFrequency;
@@ -32,14 +32,14 @@ typedef struct process
   //current state of the process
   enum process_state state;
 } process;
-
+/**Structure that holds info for a process and a duration which will be changed each tick*/
 typedef struct processIO
 {
   process* process;
   int ioDuration;
 } processIO;
 
-
+//structs for Queue setup
 typedef struct Node {
   process *process;
   struct Node *next;
