@@ -17,7 +17,7 @@ enum process_state {
 
 
 /** Structure that holds information for each task */
-struct process
+typedef struct process
 {
   //unique identifer for the process_state
   int pid;
@@ -31,4 +31,21 @@ struct process
   int ioDuration;
   //current state of the process
   enum process_state state;
-};
+} process;
+
+typedef struct processIO
+{
+  process* process;
+  int ioDuration;
+} processIO;
+
+
+typedef struct Node {
+  process *process;
+  struct Node *next;
+}node;
+
+typedef struct Queue{
+  node *head;
+  node *current;
+}Queue;

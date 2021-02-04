@@ -1,6 +1,7 @@
-#include<stdio.h>
+#include <stdio.h>
 #include <string.h>
-#include<stdlib.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include "assignment1.h"
 
 #define MEMORY 100
@@ -13,16 +14,25 @@ int isWaiting = 0;
 //wait time for IO
 int ioWaitTime = 0;
 //process in IO
-struct process *processInIO;
+process *processInIO;
+//current process
+process *currentProcess;
+//array of processes in the IO waiting state
+processIO *ioProcesses[MEMORY];
 
+int processRunning=false;
 
 //Function prototype
 void setIOWaitTime(int ioFrequency);
-int checkIOComplete();
-
+//int checkIOComplete();
+void checkCurProcCPUTime();
+int initIOProcesses();
+void addIOProcess(process *ioProc);
+void removeIOProcess(int i);
+int incrementIOProcesses();
 //Limiting total number of processes to 100 (Change?)
 //Note: This array acts as the data structure in memory like a PCB
-struct process list_of_processes[MEMORY];
+process list_of_processes[MEMORY];
 
 void init_list_of_processes(){
 //initializes all processes in memory to be Undefined.
@@ -96,8 +106,6 @@ int readFile(const char *fileName){
 fclose(file);
     return 0;
   }
-
-//Note: writes one line at a time
 int outputData(const char *fileName, int time, int pid, enum process_state oldState, enum process_state newState){
     FILE *file = fopen(fileName,"w");
     if(file == NULL){
@@ -108,60 +116,185 @@ int outputData(const char *fileName, int time, int pid, enum process_state oldSt
       fclose(file);
       return 0;
 }
-//1. How does the kernel keep track of each processes execution time and how does it know when the process reaches its max totalCPUTime
+
+//Queue functions:
+Queue readyQueue; //this goes at top
+
+void enqueue(Queue *q, process *p) {
+   //create a link
+  node *link = (node*) malloc(sizeof(node));
+
+  link->process = p;
+//   //point it to old first node
+  link->next = NULL;
+
+  if(q->head==NULL){
+      q->head = link;
+  } else{
+      node *temp = q->head;
+      //point first to new first node
+      while(temp->next!=NULL){
+         temp=temp->next;
+      }
+      temp->next = link;
+      temp=link;
+  }
+}
+
+//delete first item
+struct process * dequeue(Queue *q) {
+   //save reference to first link
+   node *tempLink = q->head;
+   //mark next to first link as first
+   q->head = q->head->next;
+   //return the deleted link
+   return tempLink->process;
+}
+
+
 void testProcess(){
   printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
   //process index in the array
   int i=0;
-  //start time of process
-  int tickStart;
-  while(list_of_processes[i].state != PROCESS_UNDEFINED){
+  int processRunning=false;
+  process *currentProcess;
+  const char* tempOldState;
+  int tickStart; //start time of current process
+  int processesComplete = false;
+  int processSuspended = false;
+
+  initIOProcesses();
+  while(1){
+    while(list_of_processes[i].state != PROCESS_UNDEFINED){
+      process *temp = &list_of_processes[i];
+      //add processes to readyQueue
+      enqueue(&readyQueue, temp);
+      i++;
+    }
+
       //if the arrival time of process is less than total ticks, wait for tick
-      while(tickCount< list_of_processes[i].arrivalTime){
-        tickCount++;
-        checkIOComplete();
-      }
-      tickStart = tickCount;
-
-      //when arrival time is greater or equal than total ticks then change process state to RUNNING
-      if(tickCount>= list_of_processes[i].arrivalTime){
-        const char* tempOldState = getState(list_of_processes[i].state);
-        list_of_processes[i].state = PROCESS_RUNNING;
-        printf("%d %d %s %s \n",tickCount, list_of_processes[i].pid,tempOldState, getState(list_of_processes[i].state));
-
-        //Send data (READY => RUNNING)
-        while(tickCount< tickStart + list_of_processes[i].ioFrequency){
+      if(!processSuspended){
+        while(tickCount< readyQueue.head->process->arrivalTime ){
           tickCount++;
-          checkIOComplete();
+          //checkIOComplete();
+          incrementIOProcesses();
+          checkCurProcCPUTime();
         }
-        tempOldState = getState(list_of_processes[i].state);
-        list_of_processes[i].state = PROCESS_WAITING;
+      }
+      //tickStart = tickCount;
+      if(!processRunning){
+        if(readyQueue.head!=NULL){ //if ready queue is ready
+          currentProcess = dequeue(&readyQueue);
+          //output data: READY => RUNNING
+          tempOldState = getState(currentProcess->state);
+          currentProcess->state = PROCESS_RUNNING;
+          processRunning = true;
+          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+
+          tickStart = tickCount;
+        }
+      }
+        //Send data (READY => RUNNING)
+        while(tickCount< tickStart + currentProcess->ioFrequency){
+          tickCount++;
+          currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU time from current process
+          //checkIOComplete();
+          incrementIOProcesses();
+          //checkCurProcCPUTime();
+          if(currentProcess->totalCPUTime==0){
+            const char* tempOldState = getState(currentProcess->state);
+            currentProcess->state = PROCESS_SUSPENDED;
+            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            processRunning = false;
+
+            printf("%i", readyQueue.head->process->pid);
+            if(readyQueue.head->next->process!=NULL){
+              printf("test");
+              readyQueue.head= readyQueue.head->next;
+            }else{
+              printf("test");
+              currentProcess = NULL;
+              processesComplete = true;
+            }
+
+            processSuspended = true;
+            break;
+          }
+        }
+
+        if(currentProcess !=NULL){
+        //send process to IO
+        tempOldState = getState(currentProcess->state);
+        currentProcess->state = PROCESS_WAITING;
+        processRunning = false;
+        addIOProcess(currentProcess);
         //send data (RUNNING => WAITING)
         //set amount of time until process stops
-        processInIO = &list_of_processes[i];
-        setIOWaitTime(list_of_processes[i].ioDuration);
-        printf("%d %d %s %s \n",tickCount, list_of_processes[i].pid,tempOldState, getState(list_of_processes[i].state));
+        printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
       }
-    i++;
+    }
+  }
+
+void printIOProcs(){
+  for(int i=0; i<3;i++){
+    printf("%i", readyQueue.head->process->pid);
   }
 }
 
-void setIOWaitTime(int ioDuration){
-  isWaiting = 1; //true
-  ioWaitTime = tickCount + ioDuration;
-}
-
-int checkIOComplete(){
-  //check if total ticks has surpassed or equal to IO duration
-  if(tickCount >= ioWaitTime && ioWaitTime != 0){
-    const char* tempOldState = getState(processInIO->state);
-    processInIO->state=PROCESS_READY;
-    printf("%d %d %s %s \n",tickCount, processInIO->pid,tempOldState, getState(processInIO->state));
-    //reset
-    ioWaitTime = 0;
-    isWaiting = 0;
+int initIOProcesses(){
+  int i;
+  for(i=0;i<MEMORY;i++){
+    ioProcesses[i] = (processIO*) malloc(sizeof(processIO));
+    ioProcesses[i]->process = NULL;
   }
   return 0;
+}
+
+void addIOProcess(process *ioProc){
+  int i;
+  for(i=0;i<MEMORY;i++){
+    if(ioProcesses[i]->process == NULL){
+      ioProcesses[i]->process = ioProc;
+      ioProcesses[i]->ioDuration= ioProc->ioDuration;
+    }
+  }
+}
+
+//note not sure if needed to clear the other data for the process in IO or it will be replaced in future
+void removeIOProcess(int i){
+  int j;
+  for(j=0;i<MEMORY;i++){
+    if(j==i){
+      ioProcesses[i]->process = NULL;
+    }
+  }
+}
+
+int incrementIOProcesses(){
+  int i;
+  for(i=0;i<MEMORY;i++){
+    if(ioProcesses[i]->process != NULL && ioProcesses[i]->process->state == PROCESS_WAITING){
+      ioProcesses[i]->ioDuration--; //decrement ioDuration by 1 tick
+      if(ioProcesses[i]->ioDuration == 0){ //check if IO for process has complete
+        processIO *p = ioProcesses[i];
+        const char* tempOldState = getState(p->process->state);
+        p->process->state= PROCESS_READY;
+        printf("%d %d %s %s \n",tickCount, p->process->pid,tempOldState, getState(p->process->state));
+        enqueue(&readyQueue, p->process); //IO has complete add process to ready queue
+        removeIOProcess(i); //clears process data at index
+      }
+    }
+  }
+  return 0;
+}
+
+void checkCurProcCPUTime(){
+  if(currentProcess!= NULL && currentProcess->totalCPUTime==0){
+    const char* tempOldState = getState(currentProcess->state);
+    currentProcess->state = PROCESS_SUSPENDED;
+    printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+    processRunning = false;
+  }
 }
 
 void setIOWaiting(int isIOWaiting){
