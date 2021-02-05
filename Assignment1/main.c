@@ -224,7 +224,6 @@ void testProcess(){
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
             currentProcess = NULL;
-            processesComplete = true;
             processSuspended = true;
             break;
           }
@@ -333,7 +332,7 @@ int main()
   //init list of processes
   init_list_of_processes();
   //read input file
-  readFile("input.txt");
+  readFile("input2.txt");
   //run simulation
   testProcess();
 }
