@@ -10,9 +10,9 @@
 
 ## Running batch files
 
-The batch files are individually linked to the two input files (input1.txt, input2.txt), running test1.txt will execute the program with **input1.txt**, and running **test2.txt** will execute the program with **input2.txt**.
+The batch files are individually linked to the two input files (input1.txt, input2.txt), running **test1.bat** will execute the program with **input1.txt**, and running **test2.bat** will execute the program with **input2.txt**. 
 
-Once the files are executed, the output will be shown in the terminal, and can also be seen in the **output.txt** file found in the 'Assignment 1' directory.
+Once the files are executed, the output will be shown in the terminal, and can also be seen in the **output.txt** file found in the 'Assignment 1' directory. (Note: the output in **output.txt** will be overwritten any time a .bat or .exe is run)
 
 ## Running the program with custom input files
 
@@ -23,7 +23,7 @@ Running the program with custom input files can be done in one of two ways:
 
 ## Running the program in an optimized IDE
 
-There are two .c files in the 'Assignment 1' directory. **mainCMD.c** is the .c file that allows for command line arguments (for the batch files and custom files), and the **main.c** file is the original .c file which can be run from an IDE and does not require arguments to be passed to it (automatically takes **input1.txt** but can be changed to accept any input file).
+There are two .c files in the 'Assignment 1' directory. **mainCMD.c** is the .c file that allows for command line arguments (for the batch files and custom files), and the **main.c** file is the original .c file which can be run from an IDE and does not require arguments to be passed to it (automatically takes **input2.txt** but can be changed to accept any input file within the main function).
 
 ## Final deliverables
 - **Source code:** main.c, mainCMD.c, assignment1.h
