@@ -27,7 +27,8 @@ There are two .c files in the 'Assignment 1' directory. **mainCMD.c** is the .c 
 
 ## Final deliverables
 - **Source code:** main.c, mainCMD.c, assignment1.h
-- **Program executables (exe):** main.exe, mainCMD.exe 
+- **Program executables (exe):** main.exe, mainCMD.exe
+- **Input/Output files:** input1.txt, input2.txt, output.txt
 - **Batch script files:** test1.bat, test2.bat 
 - **Part 1 question answers**
 - **README files**
