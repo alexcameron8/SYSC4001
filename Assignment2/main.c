@@ -57,16 +57,19 @@ void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int i
   printf("There is no more allocated memory.");
 }
 
+
 /*
- * function used for TESTING purposes to view processes and arrival times in the PCB list
+ * function used for TESTING purposes to view processes in the IO data structure
  */
 void printIOProcsArrival(){
 int i;
+printf("------------TEST------------\n");
 for(i=0; i<MEMORY;i++){
   if(list_of_processes[i].state!=PROCESS_UNDEFINED){
     printf("pid: %i , arrival: %i at position %i\n", list_of_processes[i].pid, list_of_processes[i].arrivalTime, i);
   }
 }
+printf("------------TEST------------\n");
 }
 /*
 * Helper function to swap position of 2 int
@@ -103,6 +106,34 @@ void selectionSort(struct process list_of_processes[MEMORY])
     }
     printIOProcsArrival();
 }
+
+//test
+/*
+* Function to iterate through ready queue and find process with lowest arrival time.
+*/
+process* smallestArrProcess(Queue q)
+{
+    process* min = NULL;
+    Queue temp = q;
+    // Check loop while head not equal to NULL
+    while (temp.head != NULL) {
+
+        // If min is greater then head->data then
+        // assign value of head->data to min
+        // otherwise node point to next node.
+        if(min == NULL){
+          min = temp.head->process;
+        }
+        if (min->arrivalTime > temp.head->process->arrivalTime)
+            min = temp.head->process;
+
+        temp.head = temp.head->next;
+    }
+    printf("pid: %i , arrival: %i\n", min->pid, min->arrivalTime);
+    return min;
+}
+
+//test above
 
 /*
  * This function parses a line from the input file and splits the information
@@ -196,7 +227,6 @@ void enqueue(Queue *q, process *p) {
       temp=att;
   }
 }
-
 /*
  * Remove a process to the queue.
  */
@@ -208,11 +238,12 @@ process * dequeue(Queue *q) {
    //return the deleted node
    return tempLink->process;
 }
+
 /*
  * This function runs the simulation for handling the processes and sending to different states, such as,
  * RUNNING, READY, WAITING and TERMINATED.
  */
-void testProcess(){
+void fcfs(){
   printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
   //process index in the array
   int i=0;
@@ -226,7 +257,6 @@ void testProcess(){
   //ensure that the output file is clear before appending data to it
   FILE *clearFile = fopen("output.txt","w");
   fclose(clearFile);
-
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   selectionSort(list_of_processes);
   while(1){
@@ -239,7 +269,7 @@ void testProcess(){
       i++;
     }
 
-      //if the arrival time of process is less than total ticks, wait for first process arrival time
+    //if the arrival time of process is less than total ticks, wait for first process arrival time
       if(!processSuspended){
         while(tickCount< readyQueue.head->process->arrivalTime ){
           tickCount++; //increase ticks
@@ -261,6 +291,20 @@ void testProcess(){
         }
       }
 
+      if(currentProcess->ioFrequency ==0){ //if there is no ioFrequency then perform execution until process completes execution
+        while(currentProcess->totalCPUTime!=0){
+          tickCount++;
+          currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
+          incrementIOProcesses(); //if a process is in IO then decrement time process in IO
+        }
+          const char* tempOldState = getState(currentProcess->state);
+          currentProcess->state = PROCESS_SUSPENDED;
+          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          processRunning = false;
+          currentProcess = NULL;
+          processSuspended = true;
+      }else{
         while(tickCount < tickStart + currentProcess->ioFrequency){ //execute until process requests IO
           tickCount++;
           currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
@@ -276,7 +320,7 @@ void testProcess(){
             break;
           }
         }
-
+      }
         if(currentProcess !=NULL){
         //send process to IO
         tempOldState = getState(currentProcess->state);
@@ -285,7 +329,7 @@ void testProcess(){
         addIOProcess(currentProcess); //add the process to the array of IO
         //send data (RUNNING => WAITING)
         outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-        printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+        printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
       }
     }
   }
@@ -374,13 +418,17 @@ void checkCurProcCPUTime(){
     processRunning = false;
   }
 }
-
+/*
+* FCFS part c test file : "fcfsPartC.txt"
+* FCFS part d test file : "fcfsPartD.txt"
+*/
 int main()
 {
   //init list of processes
   init_list_of_processes();
   //read input file
-  readFile("input2.txt");
+  readFile("fcfsPartD.txt");
   //run simulation
-  testProcess();
+  fcfs();
+
 }
