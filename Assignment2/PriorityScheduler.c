@@ -10,25 +10,24 @@
 //tick counter
 int tickCount = 0;
 //current running process
-process *currentProcess;
+processP *currentProcess;
 //array of processes in the IO waiting state
-processIO *ioProcesses[MEMORY];
+processIOP *ioProcesses[MEMORY];
 //boolean value if process is currently running
 int processRunning=false;
 //boolean value if a process has processArrived
 int processArrived = false;
-
 int tickStart = 0; //start time of current process
 //this array acts as the data structure in memory like a PCB with a memory set to 100 processes
-process list_of_processes[MEMORY];
+processP list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
-Queue readyQueue;
+PQueue readyQueue;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
 void checkCurProcCPUTime();
 int initIOProcesses();
-int addIOProcess(process *ioProc);
+int addIOProcess(processP *ioProc);
 void removeIOProcess(int i);
 int incrementIOProcesses();
 void printIOProcs();
@@ -47,7 +46,7 @@ void init_list_of_processes(){
  * Add a process to the array of processes and assign the process information
  * (pid,arrival time, total CPU execution time, IO Frequency, IO Duration)
  */
-void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration){
+void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration, int priority){
   for(int i=0;i<MEMORY;i++){
     if(list_of_processes[i].state == PROCESS_UNDEFINED){
       list_of_processes[i].pid = pid;
@@ -56,6 +55,7 @@ void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int i
       list_of_processes[i].ioFrequency = ioFrequency;
       list_of_processes[i].ioDuration = ioDuration;
       list_of_processes[i].state = PROCESS_READY;
+      list_of_processes[i].priority = priority;
       return;
     }
   }
@@ -89,7 +89,7 @@ void swap(int* xp, int* yp)
  * Function which sorts the processes read by the input file from arrival times
  * smallest to greatest for each process
 */
-void selectionSort(struct process list_of_processes[MEMORY])
+void selectionSort(struct processP list_of_processes[MEMORY])
 {
     int i, j, min_idx;
     int n = 0;
@@ -115,10 +115,10 @@ void selectionSort(struct process list_of_processes[MEMORY])
 /*
 * Function to iterate through ready queue and find process with lowest arrival time.
 */
-process* smallestArrProcess(Queue q)
+processP* smallestArrProcess(PQueue q)
 {
-    process* min = NULL;
-    Queue temp = q;
+    processP* min = NULL;
+    PQueue temp = q;
     // Check loop while head not equal to NULL
     while (temp.head != NULL) {
 
@@ -161,7 +161,10 @@ void getProcessData(char *processData){
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
   printf("I/O Duration: %s \n",process_data);
-  list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration);
+  process_data = strtok(NULL,delim);
+  int priority = atoi(process_data);
+  printf("Process priority: %i \n", priority);
+  list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration, priority);
 }
 /*
  * Getter function to convert a process_state enum type to a char* to be able
@@ -214,15 +217,15 @@ int outputData(const char *fileName, int time, int pid, const char *oldState, co
 /*
  * Adds a process to the queue.
  */
-void enqueue(Queue *q, process *p) {
+void enqueue(PQueue *q, processP *p) {
    //create a new link and link the process to the process passed through the argument
-  node *att = (node*) malloc(sizeof(node));
+  nodep *att = (nodep*) malloc(sizeof(node));
   att->process = p;
   att->next = NULL; //last node of queue
   if(q->head==NULL){
       q->head = att;
   } else{
-      node *temp = q->head;
+      nodep *temp = q->head;
       //point head to new first node
       while(temp->next!=NULL){
          temp=temp->next;
@@ -234,9 +237,9 @@ void enqueue(Queue *q, process *p) {
 /*
  * Remove a process to the queue.
  */
-process * dequeue(Queue *q) {
+processP * dequeue(PQueue *q) {
    //create temp node and set reference to head link
-   node *tempLink = q->head;
+   nodep *tempLink = q->head;
    //mark next node as new head
    q->head = q->head->next;
    //return the deleted node
@@ -248,7 +251,7 @@ process * dequeue(Queue *q) {
 void checkProcessArrival(){
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
-      process *temp = &list_of_processes[i];
+      processP *temp = &list_of_processes[i];
       enqueue(&readyQueue,temp);
       processArrived = true;
     }
@@ -259,12 +262,11 @@ void checkProcessArrival(){
  * This function runs the simulation for handling the processes and sending to different states, such as,
  * RUNNING, READY, WAITING and TERMINATED.
  */
-void fcfs(){
+void priorityScheduler(){
   printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
   //process index in the array
-  int i=0;
   int processRunning=false; //boolean value if a process is running
-  process *currentProcess; //pointer to the current process running
+  processP *currentProcess; //pointer to the current process running
   const char* tempOldState; //temp variable used to keep track of processes old states
   int processesComplete = false; //boolean value to end simulation if all processes have finished execution
   int processSuspended = false; //boolean value if a process is suspended
@@ -373,7 +375,7 @@ void printIOProcs(){
 int initIOProcesses(){
   int i;
   for(i=0;i<MEMORY;i++){
-    ioProcesses[i] = (processIO*) malloc(sizeof(processIO));
+    ioProcesses[i] = (processIOP*) malloc(sizeof(processIO));
     ioProcesses[i]->process = NULL;
   }
   return 0;
@@ -383,7 +385,7 @@ int initIOProcesses(){
  * Note: This data structure is required because there can be several different processes accessing IO
  * at the same time. Therefore, the easiest way to keep track of the processes in IO is to use an array
  */
-int addIOProcess(process *ioProc){
+int addIOProcess(processP *ioProc){
   int i;
   for(i=0;i<MEMORY;i++){
     if(ioProcesses[i]->process == NULL){
@@ -417,7 +419,7 @@ int incrementIOProcesses(){
     if(ioProcesses[i]->process != NULL && ioProcesses[i]->process->state == PROCESS_WAITING){
       ioProcesses[i]->ioDuration--; //decrement ioDuration by 1 tick
       if(ioProcesses[i]->ioDuration == 0){ //check if IO for process has complete
-        processIO *p = ioProcesses[i];
+        processIOP *p = ioProcesses[i];
         const char* tempOldState = getState(p->process->state);
         p->process->state= PROCESS_READY;
         outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
@@ -458,8 +460,9 @@ int main()
   //init list of processes
   init_list_of_processes();
   //read input file
+  //readFile("fcfsPartC.txt");
   readFile("fcfsPartD.txt");
   //run simulation
-  fcfs();
+  priorityScheduler();
 
 }

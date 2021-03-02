@@ -17,7 +17,6 @@ processIO *ioProcesses[MEMORY];
 int processRunning=false;
 //boolean value if a process has processArrived
 int processArrived = false;
-
 int tickStart = 0; //start time of current process
 //this array acts as the data structure in memory like a PCB with a memory set to 100 processes
 process list_of_processes[MEMORY];
@@ -458,6 +457,7 @@ int main()
   //init list of processes
   init_list_of_processes();
   //read input file
+  //readFile("fcfsPartC.txt");
   readFile("fcfsPartD.txt");
   //run simulation
   fcfs();
