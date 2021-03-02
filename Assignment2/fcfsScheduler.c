@@ -78,9 +78,9 @@ printf("------------TEST------------\n");
 /*
 * Helper function to swap position of 2 int
 */
-void swap(int* xp, int* yp)
+void swap(process* xp, process* yp)
 {
-    int temp = *xp;
+    process temp = *xp;
     *xp = *yp;
     *yp = temp;
 }
@@ -106,7 +106,7 @@ void selectionSort(struct process list_of_processes[MEMORY])
 
         // Swap the found minimum element
         // with the first element
-        swap(&list_of_processes[min_idx].arrivalTime, &list_of_processes[i].arrivalTime);
+        swap(&list_of_processes[min_idx], &list_of_processes[i]);
     }
 }
 
@@ -241,6 +241,7 @@ process * dequeue(Queue *q) {
    //return the deleted node
    return tempLink->process;
 }
+
 /*
 * Function checks if a process has to arrive yet and if so it is added to ready queue
 */
@@ -261,7 +262,6 @@ void checkProcessArrival(){
 void fcfs(){
   printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
   //process index in the array
-  int i=0;
   int processRunning=false; //boolean value if a process is running
   process *currentProcess; //pointer to the current process running
   const char* tempOldState; //temp variable used to keep track of processes old states
@@ -302,8 +302,7 @@ void fcfs(){
           currentProcess->state = PROCESS_RUNNING;
           processRunning = true;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           tickStart = tickCount; //tick count the current process begins
         }
       }
@@ -318,8 +317,7 @@ void fcfs(){
           const char* tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_SUSPENDED;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           processRunning = false;
           currentProcess = NULL;
           processSuspended = true;
@@ -333,8 +331,7 @@ void fcfs(){
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-            //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-            printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
             currentProcess = NULL;
             processSuspended = true;
@@ -350,7 +347,7 @@ void fcfs(){
         addIOProcess(currentProcess); //add the process to the array of IO
         //send data (RUNNING => WAITING)
         outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-        printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+        printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
       }
     }
   }

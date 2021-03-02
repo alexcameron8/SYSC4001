@@ -23,6 +23,10 @@ processP list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
 PQueue readyQueue;
 
+
+int readyCounter = 0;
+
+
 //func prototypes
 void setIOWaitTime(int ioFrequency);
 void checkCurProcCPUTime();
@@ -32,7 +36,8 @@ void removeIOProcess(int i);
 int incrementIOProcesses();
 void printIOProcs();
 void checkArrivalTime();
-
+void checkProcPriority();
+void checkCurrProcPriority();
 /*
  * Initialize all indexes of the list of processes (PCB) to be undefined.
  */
@@ -46,16 +51,16 @@ void init_list_of_processes(){
  * Add a process to the array of processes and assign the process information
  * (pid,arrival time, total CPU execution time, IO Frequency, IO Duration)
  */
-void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration, int priority){
+void list_add(processP arr[], int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration, int priority){
   for(int i=0;i<MEMORY;i++){
-    if(list_of_processes[i].state == PROCESS_UNDEFINED){
-      list_of_processes[i].pid = pid;
-      list_of_processes[i].arrivalTime = arrivalTime;
-      list_of_processes[i].totalCPUTime = totalCPUTime;
-      list_of_processes[i].ioFrequency = ioFrequency;
-      list_of_processes[i].ioDuration = ioDuration;
-      list_of_processes[i].state = PROCESS_READY;
-      list_of_processes[i].priority = priority;
+    if(arr[i].state == PROCESS_UNDEFINED){
+      arr[i].pid = pid;
+      arr[i].arrivalTime = arrivalTime;
+      arr[i].totalCPUTime = totalCPUTime;
+      arr[i].ioFrequency = ioFrequency;
+      arr[i].ioDuration = ioDuration;
+      arr[i].state = PROCESS_READY;
+      arr[i].priority = priority;
       return;
     }
   }
@@ -71,7 +76,7 @@ int i;
 printf("------------TEST------------\n");
 for(i=0; i<MEMORY;i++){
   if(list_of_processes[i].state!=PROCESS_UNDEFINED){
-    printf("pid: %i , arrival: %i at position %i\n", list_of_processes[i].pid, list_of_processes[i].arrivalTime, i);
+    printf("pid: %i , arrival: %i at position %i, priority level: %i \n", list_of_processes[i].pid, list_of_processes[i].arrivalTime, i, list_of_processes[i].priority);
   }
 }
 printf("------------TEST------------\n");
@@ -79,9 +84,9 @@ printf("------------TEST------------\n");
 /*
 * Helper function to swap position of 2 int
 */
-void swap(int* xp, int* yp)
+void swap(processP* xp, processP* yp)
 {
-    int temp = *xp;
+    processP temp = *xp;
     *xp = *yp;
     *yp = temp;
 }
@@ -107,37 +112,62 @@ void selectionSort(struct processP list_of_processes[MEMORY])
 
         // Swap the found minimum element
         // with the first element
-        swap(&list_of_processes[min_idx].arrivalTime, &list_of_processes[i].arrivalTime);
+        swap(&list_of_processes[min_idx], &list_of_processes[i]);
     }
 }
 
-//test
 /*
-* Function to iterate through ready queue and find process with lowest arrival time.
+ * Function which sorts the processes read by the input file from arrival times
+ * smallest to greatest for each process
 */
-processP* smallestArrProcess(PQueue q)
+void prioritySort(struct processP list_of_processes[MEMORY])
+{
+    int i, j, min_idx;
+    int n = 0;
+    while(list_of_processes[n].state != PROCESS_UNDEFINED){
+      n++;
+    }
+    // One by one move boundary of unsorted subarray
+    for (i = 0; i < n - 1; i++) {
+
+        // Find the minimum element in unsorted array
+        min_idx = i;
+        for (j = i + 1; j < n; j++)
+            if (list_of_processes[j].priority < list_of_processes[min_idx].priority)
+                min_idx = j;
+
+        // Swap the found minimum element
+        // with the first element
+        swap(&list_of_processes[min_idx], &list_of_processes[i]);
+    }
+}
+
+
+/*
+* Function to iterate through ready queue and find process with highest priority.
+* (lowest value).
+*/
+processP* smallestPriorProcess(PQueue q)
 {
     processP* min = NULL;
     PQueue temp = q;
     // Check loop while head not equal to NULL
     while (temp.head != NULL) {
-
-        // If min is greater then head->data then
-        // assign value of head->data to min
-        // otherwise node point to next node.
         if(min == NULL){
           min = temp.head->process;
         }
-        if (min->arrivalTime > temp.head->process->arrivalTime)
+        if (min->priority > temp.head->process->priority){
             min = temp.head->process;
-
-        temp.head = temp.head->next;
+        }
+        if(temp.head->next == NULL){
+          return min;
+        }else{
+          temp.head = temp.head->next;
+        }
     }
-    printf("pid: %i , arrival: %i\n", min->pid, min->arrivalTime);
     return min;
 }
 
-//test above
 
 /*
  * This function parses a line from the input file and splits the information
@@ -164,7 +194,7 @@ void getProcessData(char *processData){
   process_data = strtok(NULL,delim);
   int priority = atoi(process_data);
   printf("Process priority: %i \n", priority);
-  list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration, priority);
+  list_add(list_of_processes, pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration, priority);
 }
 /*
  * Getter function to convert a process_state enum type to a char* to be able
@@ -245,16 +275,50 @@ processP * dequeue(PQueue *q) {
    //return the deleted node
    return tempLink->process;
 }
+
 /*
 * Function checks if a process has to arrive yet and if so it is added to ready queue
 */
 void checkProcessArrival(){
+  int counter = 0;
+  for(int i=0; i<MEMORY;i++){
+    if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
+      counter++;
+    }
+  }
+  if(counter == 1){
+    for(int i=0; i<MEMORY;i++){
+      if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
+        processP *temp = &list_of_processes[i];
+        enqueue(&readyQueue,temp);
+        processArrived = true;
+      }
+    }
+  }else if(counter > 1){ //more than one process arriving at same tick
+    //init list of processes arrived at tick
+  processP processListArrived[MEMORY];
+  for(int x=0;x<MEMORY;x++){
+    processListArrived[x].state = PROCESS_UNDEFINED;
+  }
+
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
       processP *temp = &list_of_processes[i];
+      list_add(processListArrived, temp->pid,temp->arrivalTime,temp->totalCPUTime,temp->ioFrequency,temp->ioDuration,temp->priority);
+    }
+  }
+    int i=0;
+    prioritySort(processListArrived); //sort all processes which arrived at same time in order
+    while(processListArrived[i].state!=PROCESS_UNDEFINED){
+      processP *temp = &processListArrived[i];
+      readyCounter++;
+      printf("%i is being added to readyQueue at position %i\n", temp->pid,readyCounter);
       enqueue(&readyQueue,temp);
       processArrived = true;
-    }
+      i++;
+  }
+  }else{ //there are no processes arriving
+    return;
   }
 }
 
@@ -263,7 +327,7 @@ void checkProcessArrival(){
  * RUNNING, READY, WAITING and TERMINATED.
  */
 void priorityScheduler(){
-  printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
+  printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE PRIORITY\n");
   //process index in the array
   int processRunning=false; //boolean value if a process is running
   processP *currentProcess; //pointer to the current process running
@@ -306,7 +370,7 @@ void priorityScheduler(){
           processRunning = true;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           tickStart = tickCount; //tick count the current process begins
         }
       }
@@ -322,7 +386,7 @@ void priorityScheduler(){
           currentProcess->state = PROCESS_SUSPENDED;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           processRunning = false;
           currentProcess = NULL;
           processSuspended = true;
@@ -337,7 +401,7 @@ void priorityScheduler(){
             currentProcess->state = PROCESS_SUSPENDED;
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-            printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+            printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
             processRunning = false;
             currentProcess = NULL;
             processSuspended = true;
@@ -353,7 +417,7 @@ void priorityScheduler(){
         addIOProcess(currentProcess); //add the process to the array of IO
         //send data (RUNNING => WAITING)
         outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-        printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
+        printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
       }
     }
   }
@@ -362,7 +426,6 @@ void priorityScheduler(){
    */
 void printIOProcs(){
   int i;
-  printf("test\n");
   for(i=0; i<MEMORY;i++){
     if(ioProcesses[i]->process!=NULL){
       printf("%i\n", ioProcesses[i]->process->pid);
@@ -423,7 +486,7 @@ int incrementIOProcesses(){
         const char* tempOldState = getState(p->process->state);
         p->process->state= PROCESS_READY;
         outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
-        printf("%d %d %s %s \n",tickCount, p->process->pid,tempOldState, getState(p->process->state));
+        printf("%d %d %s %s %i \n",tickCount, p->process->pid,tempOldState, getState(p->process->state),p->process->priority);
         enqueue(&readyQueue, p->process); //IO has complete add process to ready queue
         removeIOProcess(i); //clears process data at index
       }
@@ -452,6 +515,53 @@ void printQueue(){
 
 
 /*
+* Function that checks if the current process is the highest priority in ready queue
+*/
+void checkProcPriority(){
+  processP* p = smallestPriorProcess(readyQueue);
+  if(readyQueue.head->process ==  p && p->arrivalTime < tickCount){
+    return;
+  }else{
+    PQueue reOrder;
+    enqueue(&reOrder, p);
+    while(readyQueue.head->next != NULL){
+      if(readyQueue.head->process != p){
+        enqueue(&reOrder, dequeue(&readyQueue));
+      }
+    }
+    readyQueue = reOrder;
+  }
+}
+
+/*
+* Function that checks if the current process running is the highest priority
+*/
+void checkCurrProcPriority(){
+  processP* p = smallestPriorProcess(readyQueue);
+
+  if(currentProcess!=NULL){
+    if(currentProcess->priority <=  p->priority){ //running process has highest priority
+      return;
+    }else{ //add current process back to readyQueue;
+      checkCurrProcPriority(); //reorder queue with highest priority if needed
+      enqueue(&readyQueue, currentProcess);
+      //Current process RUNNING => READY
+      const char* tempOldState = getState(currentProcess->state);
+      currentProcess->state = PROCESS_READY;
+      printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+
+      currentProcess = dequeue(&readyQueue); //make current process the highest priority
+      tempOldState = getState(currentProcess->state); //(Ready)
+      currentProcess->state = PROCESS_RUNNING; //(runing)
+      //Current highest priority process READY =>RUNNING
+      printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+    }
+  }
+}
+
+
+
+/*
 * FCFS part c test file : "fcfsPartC.txt"
 * FCFS part d test file : "fcfsPartD.txt"
 */
@@ -460,8 +570,7 @@ int main()
   //init list of processes
   init_list_of_processes();
   //read input file
-  //readFile("fcfsPartC.txt");
-  readFile("fcfsPartD.txt");
+  readFile("priorityInput.txt");
   //run simulation
   priorityScheduler();
 
