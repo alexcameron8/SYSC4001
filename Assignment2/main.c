@@ -15,6 +15,10 @@ process *currentProcess;
 processIO *ioProcesses[MEMORY];
 //boolean value if process is currently running
 int processRunning=false;
+//boolean value if a process has processArrived
+int processArrived = false;
+
+int tickStart = 0; //start time of current process
 //this array acts as the data structure in memory like a PCB with a memory set to 100 processes
 process list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
@@ -28,6 +32,7 @@ int addIOProcess(process *ioProc);
 void removeIOProcess(int i);
 int incrementIOProcesses();
 void printIOProcs();
+void checkArrivalTime();
 
 /*
  * Initialize all indexes of the list of processes (PCB) to be undefined.
@@ -104,7 +109,6 @@ void selectionSort(struct process list_of_processes[MEMORY])
         // with the first element
         swap(&list_of_processes[min_idx].arrivalTime, &list_of_processes[i].arrivalTime);
     }
-    printIOProcsArrival();
 }
 
 //test
@@ -239,6 +243,16 @@ process * dequeue(Queue *q) {
    return tempLink->process;
 }
 
+void checkProcessArrival(){
+  for(int i=0; i<MEMORY;i++){
+    if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
+      process *temp = &list_of_processes[i];
+      enqueue(&readyQueue,temp);
+      processArrived = true;
+    }
+  }
+}
+
 /*
  * This function runs the simulation for handling the processes and sending to different states, such as,
  * RUNNING, READY, WAITING and TERMINATED.
@@ -250,7 +264,6 @@ void fcfs(){
   int processRunning=false; //boolean value if a process is running
   process *currentProcess; //pointer to the current process running
   const char* tempOldState; //temp variable used to keep track of processes old states
-  int tickStart; //start time of current process
   int processesComplete = false; //boolean value to end simulation if all processes have finished execution
   int processSuspended = false; //boolean value if a process is suspended
 
@@ -263,16 +276,18 @@ void fcfs(){
     if(processesComplete == true){ //all processes complete, end simulation
       break;
     }
-    while(list_of_processes[i].state != PROCESS_UNDEFINED){
-      process *temp = &list_of_processes[i];
-      enqueue(&readyQueue, temp); //add all processes in memory to the readyQueue
-      i++;
+    checkProcessArrival();
+    if(processArrived == true){
+      while(readyQueue.head == NULL){
+        tickCount++;
+        incrementIOProcesses();
+      }
     }
-
-    //if the arrival time of process is less than total ticks, wait for first process arrival time
+      //if the arrival time of process is less than total ticks, wait for first process arrival time
       if(!processSuspended){
         while(tickCount< readyQueue.head->process->arrivalTime ){
           tickCount++; //increase ticks
+          checkProcessArrival();
           incrementIOProcesses(); //if a process is in IO then decrement time process in IO
           checkCurProcCPUTime(); //check if the current process has finished executing
         }
@@ -286,7 +301,8 @@ void fcfs(){
           currentProcess->state = PROCESS_RUNNING;
           processRunning = true;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
           tickStart = tickCount; //tick count the current process begins
         }
       }
@@ -294,26 +310,30 @@ void fcfs(){
       if(currentProcess->ioFrequency ==0){ //if there is no ioFrequency then perform execution until process completes execution
         while(currentProcess->totalCPUTime!=0){
           tickCount++;
+          checkProcessArrival();
           currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
           incrementIOProcesses(); //if a process is in IO then decrement time process in IO
         }
           const char* tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_SUSPENDED;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
           processRunning = false;
           currentProcess = NULL;
           processSuspended = true;
       }else{
         while(tickCount < tickStart + currentProcess->ioFrequency){ //execute until process requests IO
           tickCount++;
+          checkProcessArrival();
           currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
           incrementIOProcesses(); //if a process is in IO then decrement time process in IO
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->totalCPUTime);
             processRunning = false;
             currentProcess = NULL;
             processSuspended = true;
@@ -418,6 +438,15 @@ void checkCurProcCPUTime(){
     processRunning = false;
   }
 }
+
+void printQueue(){
+  while(readyQueue.head->next != NULL){
+    printf("%i\n", readyQueue.head->process->arrivalTime);
+    readyQueue.head->next = readyQueue.head->next->next;
+  }
+}
+
+
 /*
 * FCFS part c test file : "fcfsPartC.txt"
 * FCFS part d test file : "fcfsPartD.txt"
