@@ -276,7 +276,6 @@ void fcfs(){
   process *currentProcess; //pointer to the current process running
   const char* tempOldState; //temp variable used to keep track of processes old states
   int processesComplete = false; //boolean value to end simulation if all processes have finished execution
-  int processSuspended = false; //boolean value if a process is suspended
 
   //ensure that the output file is clear before appending data to it
   FILE *clearFile = fopen("output.txt","w");
@@ -329,7 +328,6 @@ void fcfs(){
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           processRunning = false;
           currentProcess = NULL;
-          processSuspended = true;
       }else{ //there is ioFrequency
         while(tickCount < tickStart + currentProcess->ioFrequency){ //execute until process requests IO
           tickCount++;
@@ -343,7 +341,6 @@ void fcfs(){
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
             currentProcess = NULL;
-            processSuspended = true;
             break;
           }
         }
