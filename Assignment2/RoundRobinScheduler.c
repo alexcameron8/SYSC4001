@@ -274,7 +274,6 @@ void checkProcessArrival(){
    int processRunning=false; //boolean value if a process is running
    const char* tempOldState; //temp variable used to keep track of processes old states
    int processesComplete = false; //boolean value to end simulation if all processes have finished execution
-   int processSuspended = false; //boolean value if a process is suspended
 
    //ensure that the output file is clear before appending data to it
    FILE *clearFile = fopen("output.txt","w");
@@ -349,7 +348,6 @@ void checkProcessArrival(){
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
             currentProcess = NULL;
-            processSuspended = true;
           }
        }else{
          while(currentProcess->ioFrequencyRemaining>0){ //execute until process requests IO
@@ -367,7 +365,6 @@ void checkProcessArrival(){
              printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
              processRunning = false;
              currentProcess = NULL;
-             processSuspended = true;
              burstRemaining = QUANTUM;
              break;
            }
