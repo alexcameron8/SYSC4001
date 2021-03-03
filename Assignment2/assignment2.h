@@ -15,6 +15,7 @@ enum process_state {
   PROCESS_UNDEFINED
 };
 
+/**First Come First Server Scheduler*/
 
 /** Structure that holds information for each task */
 typedef struct process
@@ -51,7 +52,8 @@ typedef struct Queue{
   node *current;
 }Queue;
 
-/** Process information for Priority Scheduler*/
+/**Priority Scheduler*/
+
 /** Structure that holds information for each task */
 typedef struct processP
 {
@@ -88,3 +90,13 @@ typedef struct PQueue{
   nodep *head;
   nodep *current;
 }PQueue;
+
+/**Round Robin Scheduler*/
+/**Structure which holds a process and manages how much allocated CPU time the Round Robin Quantum allows */
+typedef struct processRR
+{
+  //the process
+  process* process;
+  //the amount of max CPU time left during execution
+  int burstRemaining;
+} processRR;

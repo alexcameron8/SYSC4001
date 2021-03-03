@@ -283,6 +283,11 @@ void fcfs(){
         tickCount++;
         incrementIOProcesses();
       }
+    }else{
+      while(!processArrived){
+        tickCount++;
+        checkProcessArrival();
+      }
     }
       //if the arrival time of process is less than total ticks, wait for first process arrival time
       if(!processSuspended){
@@ -454,8 +459,8 @@ int main()
   //init list of processes
   init_list_of_processes();
   //read input file
-  //readFile("fcfsPartC.txt");
-  readFile("fcfsPartD.txt");
+  readFile("fcfsPartC.txt");
+  //readFile("fcfsPartD.txt");
   //run simulation
   fcfs();
 

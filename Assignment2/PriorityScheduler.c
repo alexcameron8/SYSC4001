@@ -350,6 +350,11 @@ void priorityScheduler(){
         tickCount++;
         incrementIOProcesses();
       }
+    }else{
+      while(!processArrived){
+        tickCount++;
+        checkProcessArrival();
+      }
     }
       //if the arrival time of process is less than total ticks, wait for first process arrival time
       if(!processSuspended){
