@@ -302,18 +302,8 @@ void fcfs(){
         checkProcessArrival();
       }
     }
-    //check later 9delete)
-      // //if the arrival time of process is less than total ticks, wait for first process arrival time
-      // if(!processSuspended){
-      //   while(tickCount< readyQueue.head->process->arrivalTime ){
-      //     tickCount++; //increase ticks
-      //     checkProcessArrival();
-      //     incrementIOProcesses(); //if a process is in IO then decrement time process in IO
-      //     checkCurProcCPUTime(); //check if the current process has finished executing
-      //   }
-      // }
 
-      if(!processRunning){
+      if(!processRunning){ //no process is currently running then assign a process to run
         if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
           currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
           //output data: READY => RUNNING
@@ -340,7 +330,7 @@ void fcfs(){
           processRunning = false;
           currentProcess = NULL;
           processSuspended = true;
-      }else{ //there is IO
+      }else{ //there is ioFrequency
         while(tickCount < tickStart + currentProcess->ioFrequency){ //execute until process requests IO
           tickCount++;
           checkProcessArrival();
@@ -358,7 +348,7 @@ void fcfs(){
           }
         }
       }
-        if(currentProcess !=NULL){
+        if(currentProcess !=NULL){ //if process requires IO
         //send process to IO
         tempOldState = getState(currentProcess->state);
         currentProcess->state = PROCESS_WAITING;
@@ -444,17 +434,6 @@ int incrementIOProcesses(){
   }
   return 0;
 }
-// /*
-//  * Check if the current process has finished executing
-//  */
-// void checkCurProcCPUTime(){
-//   if(currentProcess!= NULL && currentProcess->totalCPUTime==0){
-//     const char* tempOldState = getState(currentProcess->state);
-//     currentProcess->state = PROCESS_SUSPENDED;
-//     printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-//     processRunning = false;
-//   }
-// }
 
 void printQueue(){
   while(readyQueue.head->next != NULL){

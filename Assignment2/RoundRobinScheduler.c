@@ -300,10 +300,9 @@ void checkProcessArrival(){
        }
      }
 
-       if(!processRunning){
+       if(!processRunning){ //no process is currently running then scheduler must assign one
          if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
            currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
-  //         printf("PID: %i Frequency remaining: %i\n",currentProcess->pid, currentProcess->ioFrequencyRemaining);
            //output data: READY => RUNNING
            tempOldState = getState(currentProcess->state);
            currentProcess->state = PROCESS_RUNNING;
@@ -320,8 +319,6 @@ void checkProcessArrival(){
            checkProcessArrival();
            currentProcess->totalCPUTime--; //decreases total CPU execution time from current process
            burstRemaining--;
-  //         printf(" (shouldnt reach here) Frequency remaining: %i\n", currentProcess->ioFrequencyRemaining);
-           //printf("%i\n", burstRemaining); test
            incrementIOProcesses(); //if a process is in IO then decrement time process in IO
            if(burstRemaining==0){
              break;
@@ -340,7 +337,7 @@ void checkProcessArrival(){
             }
           }
 
-          if(processRunning){
+          if(processRunning){ //The totalCPU execution time of the process is complete (SUSPEND PROCESS)
             burstRemaining = QUANTUM;
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
@@ -354,7 +351,6 @@ void checkProcessArrival(){
            tickCount++;
            checkProcessArrival();
            currentProcess->ioFrequencyRemaining--;
-//           printf("PID: %i Frequency remaining: %i\n",currentProcess->pid, currentProcess->ioFrequencyRemaining);
            currentProcess->totalCPUTime--; //decreases total CPU execution time from current process
            burstRemaining--;
            incrementIOProcesses(); //if a process is in IO then decrement time process in IO
@@ -368,8 +364,8 @@ void checkProcessArrival(){
              burstRemaining = QUANTUM;
              break;
            }
-//           printf("burstRemaining: %i reached?\n", burstRemaining); //test
-           if(burstRemaining==0){
+
+           if(burstRemaining==0){ //if quantum for current process execution reached
              if(currentProcess->ioFrequencyRemaining >0){ //case where process has executed max quantum time but not terminated or request IO yet
                tempOldState = getState(currentProcess->state);
                currentProcess->state = PROCESS_READY;
@@ -384,8 +380,7 @@ void checkProcessArrival(){
            }
          }
 
-         //check if current process quantum completed
-         if(currentProcess !=NULL){
+         if(currentProcess !=NULL){ //check if current process quantum execution time completed
            if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
              const char* tempOldState = getState(currentProcess->state); //RUNNING
              currentProcess->state = PROCESS_READY;
@@ -397,8 +392,7 @@ void checkProcessArrival(){
            }
          }
        }
-         if(currentProcess !=NULL && currentProcess->ioFrequencyRemaining == 0){
-//           printf("\t(waiting)PID: %i Frequency remaining: %i\n",currentProcess->pid, currentProcess->ioFrequencyRemaining);
+         if(currentProcess !=NULL && currentProcess->ioFrequencyRemaining == 0){ //case where current process needs IO
          //send process to IO
          tempOldState = getState(currentProcess->state);
          currentProcess->state = PROCESS_WAITING;
