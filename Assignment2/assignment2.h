@@ -32,6 +32,8 @@ typedef struct process
   int ioDuration;
   //current state of the process
   enum process_state state;
+  //index in the array to access this processes data/metrics
+  int processData;
 } process;
 
 /**Structure that holds info for a process and a duration which will be changed each tick*/
@@ -95,8 +97,55 @@ typedef struct PQueue{
 /**Structure which holds a process and manages how much allocated CPU time the Round Robin Quantum allows */
 typedef struct processRR
 {
-  //the process
-  process* process;
-  //the amount of max CPU time left during execution
-  int burstRemaining;
+  //unique identifer for the process_state
+  int pid;
+  //Initial simulated is 0 and the arrival time can be at 0 or any time value thereafter. The time units to be used are milliseconds.
+  int arrivalTime;
+  // it is the total time the process needs to complete (does not include I/O time: only the total time needed in the CPU)
+  int totalCPUTime;
+  //the processes are assumed to make an input/output with this frequency
+  int ioFrequency;
+  // this is the duration for the I/O for each of the processes (assumed to be the same for all the I/O operations)
+  int ioDuration;
+  //current state of the process
+  enum process_state state;
+  //amount of CPU execution time left until IO required
+  int ioFrequencyRemaining;
+  //index in the array to access this processes data/metrics
+  int processData;
 } processRR;
+
+//structs for Queue setup
+typedef struct NodeRR {
+  processRR *process;
+  struct NodeRR *next;
+}nodeRR;
+
+typedef struct RRQueue{
+  nodeRR *head;
+  nodeRR *current;
+}RRQueue;
+
+/**Structure that holds info for a process and a duration which will be changed each tick*/
+typedef struct processIORR
+{
+  processRR* process;
+  int ioDuration;
+} processIORR;
+
+/**Metrics to be computed for part 2 b) for each process*/
+
+typedef struct processMetrics
+{
+  int pid;
+  int throughput;
+  int avgTurnaroundTime;
+  int avgWaitingTime;
+  //time between 2 IO Operations
+  int avgResponseTime;
+  //time when process finishes
+  int finishTime;
+  int arrivalTime;
+  int timeInIO;
+
+} processMetrics;

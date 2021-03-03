@@ -14,9 +14,9 @@ int tickCount = 0;
 //burst time of current process remaining
 int burstRemaining = QUANTUM;
 //current running process
-process *currentProcess;
+processRR *currentProcess;
 //array of processes in the IO waiting state
-processIO *ioProcesses[MEMORY];
+processIORR *ioProcesses[MEMORY];
 //boolean value if process is currently running
 int processRunning=false;
 //boolean value if a process has processArrived
@@ -26,15 +26,15 @@ int calledThisTick = false;
 //start time of current process
 int tickStart = 0;
 //this array acts as the data structure in memory like a PCB with a memory set to 100 processes
-process list_of_processes[MEMORY];
+processRR list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
-Queue readyQueue;
+RRQueue readyQueue;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
 void checkCurProcCPUTime();
 int initIOProcesses();
-int addIOProcess(process *ioProc);
+int addIOProcess(processRR *ioProc);
 void removeIOProcess(int i);
 int incrementIOProcesses();
 void printIOProcs();
@@ -63,6 +63,8 @@ void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int i
       list_of_processes[i].ioFrequency = ioFrequency;
       list_of_processes[i].ioDuration = ioDuration;
       list_of_processes[i].state = PROCESS_READY;
+      list_of_processes[i].ioFrequencyRemaining = ioFrequency;
+      printf("PID: %i Frequency:%i  remaining: %i\n", list_of_processes[i].pid, list_of_processes[i].ioFrequency, list_of_processes[i].ioFrequencyRemaining); //test
       return;
     }
   }
@@ -86,9 +88,9 @@ printf("------------TEST------------\n");
 /*
 * Helper function to swap position of 2 int
 */
-void swap(process* xp, process* yp)
+void swap(processRR* xp, processRR* yp)
 {
-    process temp = *xp;
+    processRR temp = *xp;
     *xp = *yp;
     *yp = temp;
 }
@@ -96,7 +98,7 @@ void swap(process* xp, process* yp)
  * Function which sorts the processes read by the input file from arrival times
  * smallest to greatest for each process
 */
-void selectionSort(struct process list_of_processes[MEMORY])
+void selectionSort(struct processRR list_of_processes[MEMORY])
 {
     int i, j, min_idx;
     int n = 0;
@@ -121,10 +123,10 @@ void selectionSort(struct process list_of_processes[MEMORY])
 /*
 * Function to iterate through ready queue and find process with lowest arrival time.
 */
-process* smallestArrProcess(Queue q)
+processRR* smallestArrProcess(RRQueue q)
 {
-    process* min = NULL;
-    Queue temp = q;
+    processRR* min = NULL;
+    RRQueue temp = q;
     // Check loop while head not equal to NULL
     while (temp.head != NULL) {
 
@@ -218,15 +220,15 @@ int outputData(const char *fileName, int time, int pid, const char *oldState, co
 /*
  * Adds a process to the queue.
  */
-void enqueue(Queue *q, process *p) {
+void enqueue(RRQueue *q, processRR *p) {
    //create a new link and link the process to the process passed through the argument
-  node *att = (node*) malloc(sizeof(node));
+  nodeRR *att = (nodeRR*) malloc(sizeof(node));
   att->process = p;
   att->next = NULL; //last node of queue
   if(q->head==NULL){
       q->head = att;
   } else{
-      node *temp = q->head;
+      nodeRR *temp = q->head;
       //point head to new first node
       while(temp->next!=NULL){
          temp=temp->next;
@@ -238,9 +240,9 @@ void enqueue(Queue *q, process *p) {
 /*
  * Remove a process to the queue.
  */
-process * dequeue(Queue *q) {
+processRR * dequeue(RRQueue *q) {
    //create temp node and set reference to head link
-   node *tempLink = q->head;
+   nodeRR *tempLink = q->head;
    //mark next node as new head
    q->head = q->head->next;
    //return the deleted node
@@ -253,7 +255,7 @@ process * dequeue(Queue *q) {
 void checkProcessArrival(){
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
-      process *temp = &list_of_processes[i];
+      processRR *temp = &list_of_processes[i];
     //  printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing purposes
       enqueue(&readyQueue,temp);
       processArrived = true;
@@ -270,7 +272,6 @@ void checkProcessArrival(){
    printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
    //process index in the array
    int processRunning=false; //boolean value if a process is running
-   process *currentProcess; //pointer to the current process running
    const char* tempOldState; //temp variable used to keep track of processes old states
    int processesComplete = false; //boolean value to end simulation if all processes have finished execution
    int processSuspended = false; //boolean value if a process is suspended
@@ -303,6 +304,7 @@ void checkProcessArrival(){
        if(!processRunning){
          if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
            currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
+  //         printf("PID: %i Frequency remaining: %i\n",currentProcess->pid, currentProcess->ioFrequencyRemaining);
            //output data: READY => RUNNING
            tempOldState = getState(currentProcess->state);
            currentProcess->state = PROCESS_RUNNING;
@@ -317,8 +319,9 @@ void checkProcessArrival(){
          while(currentProcess->totalCPUTime!=0){
            tickCount++;
            checkProcessArrival();
-           currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
+           currentProcess->totalCPUTime--; //decreases total CPU execution time from current process
            burstRemaining--;
+  //         printf(" (shouldnt reach here) Frequency remaining: %i\n", currentProcess->ioFrequencyRemaining);
            //printf("%i\n", burstRemaining); test
            incrementIOProcesses(); //if a process is in IO then decrement time process in IO
            if(burstRemaining==0){
@@ -349,10 +352,13 @@ void checkProcessArrival(){
             processSuspended = true;
           }
        }else{
-         while(tickCount < tickStart + currentProcess->ioFrequency || burstRemaining ==0){ //execute until process requests IO
+         while(currentProcess->ioFrequencyRemaining>0){ //execute until process requests IO
            tickCount++;
            checkProcessArrival();
-           currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
+           currentProcess->ioFrequencyRemaining--;
+//           printf("PID: %i Frequency remaining: %i\n",currentProcess->pid, currentProcess->ioFrequencyRemaining);
+           currentProcess->totalCPUTime--; //decreases total CPU execution time from current process
+           burstRemaining--;
            incrementIOProcesses(); //if a process is in IO then decrement time process in IO
            if(currentProcess->totalCPUTime==0){ //if a process has finished executing
              const char* tempOldState = getState(currentProcess->state);
@@ -362,11 +368,40 @@ void checkProcessArrival(){
              processRunning = false;
              currentProcess = NULL;
              processSuspended = true;
+             burstRemaining = QUANTUM;
+             break;
+           }
+//           printf("burstRemaining: %i reached?\n", burstRemaining); //test
+           if(burstRemaining==0){
+             if(currentProcess->ioFrequencyRemaining >0){ //case where process has executed max quantum time but not terminated or request IO yet
+               tempOldState = getState(currentProcess->state);
+               currentProcess->state = PROCESS_READY;
+               outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+               printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+               enqueue(&readyQueue, currentProcess);
+               currentProcess = NULL;
+               processRunning = false;
+               burstRemaining = QUANTUM;
+             }
              break;
            }
          }
-       }
+
+         //check if current process quantum completed
          if(currentProcess !=NULL){
+           if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
+             const char* tempOldState = getState(currentProcess->state); //RUNNING
+             currentProcess->state = PROCESS_READY;
+             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+             processRunning = false;
+             enqueue(&readyQueue,currentProcess); //put process back in ready queue
+             burstRemaining = QUANTUM; //reset burst remaining
+             currentProcess = NULL;
+           }
+         }
+       }
+         if(currentProcess !=NULL && currentProcess->ioFrequencyRemaining == 0){
+//           printf("\t(waiting)PID: %i Frequency remaining: %i\n",currentProcess->pid, currentProcess->ioFrequencyRemaining);
          //send process to IO
          tempOldState = getState(currentProcess->state);
          currentProcess->state = PROCESS_WAITING;
@@ -395,7 +430,7 @@ void printIOProcs(){
 int initIOProcesses(){
   int i;
   for(i=0;i<MEMORY;i++){
-    ioProcesses[i] = (processIO*) malloc(sizeof(processIO));
+    ioProcesses[i] = (processIORR*) malloc(sizeof(processIO));
     ioProcesses[i]->process = NULL;
   }
   return 0;
@@ -405,7 +440,7 @@ int initIOProcesses(){
  * Note: This data structure is required because there can be several different processes accessing IO
  * at the same time. Therefore, the easiest way to keep track of the processes in IO is to use an array
  */
-int addIOProcess(process *ioProc){
+int addIOProcess(processRR *ioProc){
   int i;
   for(i=0;i<MEMORY;i++){
     if(ioProcesses[i]->process == NULL){
@@ -439,11 +474,12 @@ int incrementIOProcesses(){
     if(ioProcesses[i]->process != NULL && ioProcesses[i]->process->state == PROCESS_WAITING){
       ioProcesses[i]->ioDuration--; //decrement ioDuration by 1 tick
       if(ioProcesses[i]->ioDuration == 0){ //check if IO for process has complete
-        processIO *p = ioProcesses[i];
+        processIORR *p = ioProcesses[i];
         const char* tempOldState = getState(p->process->state);
         p->process->state= PROCESS_READY;
         outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         printf("%d %d %s %s \n",tickCount, p->process->pid,tempOldState, getState(p->process->state));
+        p->process->ioFrequencyRemaining = p->process->ioFrequency; //reset amount until IO runs again
         enqueue(&readyQueue, p->process); //IO has complete add process to ready queue
         removeIOProcess(i); //clears process data at index
       }
@@ -502,7 +538,8 @@ int main()
   //init list of processes
   init_list_of_processes();
   //read input file
-  readFile("roundRobin.txt");
+  readFile("roundRobinIO.txt");
+  //readFile("roundRobin.txt");
   //run Round Robin simulation
   roundrobin();
 
