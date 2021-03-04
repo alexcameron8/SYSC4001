@@ -517,7 +517,7 @@ int main()
   init_list_of_processes();
   //read input file
   //readFile("fcfsPartC.txt");
-  readFile("fcfsPartD.txt");
+  readFile("InputFiles/test.txt");
   //run simulation
   fcfs();
   calculateMetrics();
