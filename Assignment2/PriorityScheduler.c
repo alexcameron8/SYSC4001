@@ -6,7 +6,12 @@
 
 //predetermined memory for array of processes
 #define MEMORY 100
+#define QUANTUM_HIGH 1
+#define QUANTUM_MED 2
+#define QUANTUM_LOW 4
 
+const int max_priority = 3;
+const int min_priority = 1;
 //tick counter
 int tickCount = 0;
 //current running process
@@ -21,11 +26,11 @@ int tickStart = 0; //start time of current process
 //this array acts as the data structure in memory like a PCB with a memory set to 100 processes
 processP list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
-PQueue readyQueue;
-
+PQueue highPriorityQueue, medPriorityQueue, lowPriorityQueue;
 
 int readyCounter = 0;
 
+int burstRemaining;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -60,7 +65,14 @@ void list_add(processP arr[], int pid, int arrivalTime, int totalCPUTime, int io
       arr[i].ioFrequency = ioFrequency;
       arr[i].ioDuration = ioDuration;
       arr[i].state = PROCESS_READY;
-      arr[i].priority = priority;
+      list_of_processes[i].ioFrequencyRemaining = ioFrequency;
+      if(priority>max_priority){
+        arr[i].priority = max_priority;
+      }else if(priority<min_priority){
+        arr[i].priority = min_priority;
+      }else{
+        arr[i].priority = priority;
+      }
       return;
     }
   }
@@ -275,50 +287,75 @@ processP * dequeue(PQueue *q) {
    //return the deleted node
    return tempLink->process;
 }
+/*
+ * Adds a process to a queue based on priority level.
+ */
+void addToQueue(processP *p){
+  int priority = p->priority;
+  if(priority >= 3){ //priority is greater or equal to 3 then put in low priority queue
+    enqueue(&lowPriorityQueue, p);
+  }else if(priority == 2){ //priority level is 2 then put in the medium priority queue
+    enqueue(&medPriorityQueue, p);
+  }else{ //priority level is 0/1 then put in the high priority queue
+    enqueue(&highPriorityQueue, p);
+  }
+}
+
+/*
+ * Remove a process from the front of a queue based on priority level.
+ */
+processP * removeFromQueue(int priority){
+  if(priority < 0){
+      printf("Cannot remove from queue\n");
+  }else if(priority >= max_priority){ //priority is greater or equal to 3 then remove from low priority queue
+    return dequeue(&lowPriorityQueue);
+  }else if(priority == 2){ //priority level is 2 then remove from the medium priority queue
+    return dequeue(&medPriorityQueue);
+  }else{ //priority level is 0/1 then remove from the high priority queue
+    return dequeue(&highPriorityQueue);
+  }
+}
+/*
+* Sets the quantum value to the corresponding queue level
+*/
+void setRemainingBurst(int priority){
+  if(priority >= 3){ //priority is greater or equal to 3 then set quantum for new process to low priority quantum
+    burstRemaining = QUANTUM_LOW;
+  }else if(priority == 2){ //priority level is 2 then set quantum for new process to medium priority quantum
+    burstRemaining = QUANTUM_MED;
+  }else{ //priority level is 0/1 then set quantum for new process to high priority quantum
+    burstRemaining = QUANTUM_HIGH;
+  }
+}
+
+/**
+* Checks if queues are empty. If highPriorityQueue has process ready then return 1
+* If medPriorityQueue has process ready then return 2. If medPriorityQueue has process
+* ready then return 3. Otherwise, return -1.
+*/
+int checkQueue(){
+  if(highPriorityQueue.head !=NULL){
+    return 1;
+  }else if(medPriorityQueue.head !=NULL){
+    return 2;
+  }else if(lowPriorityQueue.head !=NULL){
+    return 3;
+  }else{
+    return -1;
+  }
+}
 
 /*
 * Function checks if a process has to arrive yet and if so it is added to ready queue
 */
 void checkProcessArrival(){
-  int counter = 0;
-  for(int i=0; i<MEMORY;i++){
-    if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
-      counter++;
-    }
-  }
-  if(counter == 1){
-    for(int i=0; i<MEMORY;i++){
-      if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
-        processP *temp = &list_of_processes[i];
-        enqueue(&readyQueue,temp);
-        processArrived = true;
-      }
-    }
-  }else if(counter > 1){ //more than one process arriving at same tick
-    //init list of processes arrived at tick
-  processP processListArrived[MEMORY];
-  for(int x=0;x<MEMORY;x++){
-    processListArrived[x].state = PROCESS_UNDEFINED;
-  }
-
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
       processP *temp = &list_of_processes[i];
-      list_add(processListArrived, temp->pid,temp->arrivalTime,temp->totalCPUTime,temp->ioFrequency,temp->ioDuration,temp->priority);
-    }
-  }
-    int i=0;
-    prioritySort(processListArrived); //sort all processes which arrived at same time in order
-    while(processListArrived[i].state!=PROCESS_UNDEFINED){
-      processP *temp = &processListArrived[i];
-      readyCounter++;
-      printf("%i is being added to readyQueue at position %i\n", temp->pid,readyCounter);
-      enqueue(&readyQueue,temp);
+      printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount);
+      addToQueue(temp);
       processArrived = true;
-      i++;
-  }
-  }else{ //there are no processes arriving
-    return;
+    }
   }
 }
 
@@ -330,10 +367,8 @@ void priorityScheduler(){
   printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE PRIORITY\n");
   //process index in the array
   int processRunning=false; //boolean value if a process is running
-  processP *currentProcess; //pointer to the current process running
+  //no processes have arrived  const char* tempOldState; //temp variable used to keep track of processes old states
   const char* tempOldState; //temp variable used to keep track of processes old states
-  int processesComplete = false; //boolean value to end simulation if all processes have finished execution
-  int processSuspended = false; //boolean value if a process is suspended
 
   //ensure that the output file is clear before appending data to it
   FILE *clearFile = fopen("output.txt","w");
@@ -341,34 +376,25 @@ void priorityScheduler(){
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   selectionSort(list_of_processes);
   while(1){
-    if(processesComplete == true){ //all processes complete, end simulation
-      break;
+    if(tickCount==0){
+      checkProcessArrival();
     }
-    checkProcessArrival();
-    if(processArrived == true){
-      while(readyQueue.head == NULL){
+    if(processArrived == true){ //case where the only process that has arrived is in IO
+      while(checkQueue() == -1){ //while there are no processes in high/med/low queues
         tickCount++;
         incrementIOProcesses();
       }
-    }else{
+    }else{//no processes have arrived
       while(!processArrived){
         tickCount++;
         checkProcessArrival();
       }
     }
-      //if the arrival time of process is less than total ticks, wait for first process arrival time
-      if(!processSuspended){
-        while(tickCount< readyQueue.head->process->arrivalTime ){
-          tickCount++; //increase ticks
-          checkProcessArrival();
-          incrementIOProcesses(); //if a process is in IO then decrement time process in IO
-          checkCurProcCPUTime(); //check if the current process has finished executing
-        }
-      }
 
       if(!processRunning){
-        if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
-          currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
+        if(checkQueue() > 0){ //if there is a process in a queue
+          currentProcess = removeFromQueue(checkQueue()); //remove first process from highest priority queue
+          setRemainingBurst(checkQueue());
           //output data: READY => RUNNING
           tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_RUNNING;
@@ -384,9 +410,32 @@ void priorityScheduler(){
         while(currentProcess->totalCPUTime!=0){
           tickCount++;
           checkProcessArrival();
-          currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
+          currentProcess->totalCPUTime--; //decreases total CPU execution time from current process
+          burstRemaining--;
           incrementIOProcesses(); //if a process is in IO then decrement time process in IO
+          if(burstRemaining==0){
+            if(currentProcess->totalCPUTime!=0){ //if process uses quantum time in a queue and does not execute
+              if(currentProcess->priority < 3){ //the process is bumped down a priority
+                currentProcess->priority++;
+              }
+            }
+            break;
+          }
         }
+
+        //check if current process quantum completed
+        if(currentProcess !=NULL){
+          if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
+            const char* tempOldState = getState(currentProcess->state); //RUNNING
+            currentProcess->state = PROCESS_READY;
+            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            processRunning = false;
+            addToQueue(currentProcess); //put process back in ready queue
+            currentProcess = NULL;
+          }
+        }
+
+        if(processRunning){
           const char* tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_SUSPENDED;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
@@ -394,35 +443,64 @@ void priorityScheduler(){
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           processRunning = false;
           currentProcess = NULL;
-          processSuspended = true;
+        }
       }else{
-        while(tickCount < tickStart + currentProcess->ioFrequency){ //execute until process requests IO
+        while(currentProcess->ioFrequencyRemaining>0){ //execute until process requests IO
           tickCount++;
           checkProcessArrival();
-          currentProcess->totalCPUTime = currentProcess->totalCPUTime - 1; //decreases total CPU execution time from current process
+          currentProcess->ioFrequencyRemaining--;
+          currentProcess->totalCPUTime--; //decreases total CPU execution time from current process
+          burstRemaining--;
+  //        printf("\t\t\t1. PID: %i Remaining CPU Time: %i\n", currentProcess->pid, currentProcess->totalCPUTime); //test
           incrementIOProcesses(); //if a process is in IO then decrement time process in IO
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-            //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
             processRunning = false;
             currentProcess = NULL;
-            processSuspended = true;
             break;
+          }
+          if(burstRemaining==0){ //if quantum for current process execution reached
+            if(currentProcess->ioFrequencyRemaining > 0){ //case where process has executed max quantum time but not terminated or request IO yet
+              if(currentProcess->priority < 3){ //the process is bumped down a priority because it did not finish executing
+                currentProcess->priority++;
+              }
+              tempOldState = getState(currentProcess->state);
+              currentProcess->state = PROCESS_READY;
+              outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+              printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+              addToQueue(currentProcess);
+              currentProcess = NULL;
+              processRunning = false;
+            }
+            break;
+          }
+        }
+
+        if(currentProcess !=NULL){ //check if current process quantum execution time completed
+          if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
+            printf("\t\t2. PID: %i Remaining CPU Time: %i\n", currentProcess->pid, currentProcess->totalCPUTime); //test
+            const char* tempOldState = getState(currentProcess->state); //RUNNING
+            currentProcess->state = PROCESS_READY;
+            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            processRunning = false;
+            addToQueue(currentProcess); //put process back in ready queue
+            currentProcess = NULL;
           }
         }
       }
         if(currentProcess !=NULL){
-        //send process to IO
-        tempOldState = getState(currentProcess->state);
-        currentProcess->state = PROCESS_WAITING;
-        processRunning = false;
-        addIOProcess(currentProcess); //add the process to the array of IO
-        //send data (RUNNING => WAITING)
-        outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-        printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
+          printf("\t3. PID: %i Remaining CPU Time: %i\n", currentProcess->pid, currentProcess->totalCPUTime); //test
+          //send process to IO
+          tempOldState = getState(currentProcess->state);
+          currentProcess->state = PROCESS_WAITING;
+          processRunning = false;
+          addIOProcess(currentProcess); //add the process to the array of IO
+          //send data (RUNNING => WAITING)
+          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
       }
     }
   }
@@ -492,7 +570,7 @@ int incrementIOProcesses(){
         p->process->state= PROCESS_READY;
         outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         printf("%d %d %s %s %i \n",tickCount, p->process->pid,tempOldState, getState(p->process->state),p->process->priority);
-        enqueue(&readyQueue, p->process); //IO has complete add process to ready queue
+        addToQueue(p->process);
         removeIOProcess(i); //clears process data at index
       }
     }
@@ -511,71 +589,25 @@ void checkCurProcCPUTime(){
   }
 }
 
-void printQueue(){
-  while(readyQueue.head->next != NULL){
-    printf("%i\n", readyQueue.head->process->arrivalTime);
-    readyQueue.head->next = readyQueue.head->next->next;
+void printQueue(PQueue q){
+  while(q.head->next != NULL){
+    printf("%i\n", q.head->process->arrivalTime);
+    q.head->next = q.head->next->next;
   }
 }
 
 
 /*
-* Function that checks if the current process is the highest priority in ready queue
-*/
-void checkProcPriority(){
-  processP* p = smallestPriorProcess(readyQueue);
-  if(readyQueue.head->process ==  p && p->arrivalTime < tickCount){
-    return;
-  }else{
-    PQueue reOrder;
-    enqueue(&reOrder, p);
-    while(readyQueue.head->next != NULL){
-      if(readyQueue.head->process != p){
-        enqueue(&reOrder, dequeue(&readyQueue));
-      }
-    }
-    readyQueue = reOrder;
-  }
-}
-
-/*
-* Function that checks if the current process running is the highest priority
-*/
-void checkCurrProcPriority(){
-  processP* p = smallestPriorProcess(readyQueue);
-
-  if(currentProcess!=NULL){
-    if(currentProcess->priority <=  p->priority){ //running process has highest priority
-      return;
-    }else{ //add current process back to readyQueue;
-      checkCurrProcPriority(); //reorder queue with highest priority if needed
-      enqueue(&readyQueue, currentProcess);
-      //Current process RUNNING => READY
-      const char* tempOldState = getState(currentProcess->state);
-      currentProcess->state = PROCESS_READY;
-      printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-
-      currentProcess = dequeue(&readyQueue); //make current process the highest priority
-      tempOldState = getState(currentProcess->state); //(Ready)
-      currentProcess->state = PROCESS_RUNNING; //(runing)
-      //Current highest priority process READY =>RUNNING
-      printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-    }
-  }
-}
-
-
-
-/*
-* FCFS part c test file : "fcfsPartC.txt"
-* FCFS part d test file : "fcfsPartD.txt"
+* Priority Queue part c test file : "priorityInput.txt"
+* FCFS part d test file : "priorityInputIO.txt"
 */
 int main()
 {
   //init list of processes
   init_list_of_processes();
   //read input file
-  readFile("priorityInput.txt");
+  //readFile("priorityInput.txt");
+  readFile("priorityInputIO.txt");
   //run simulation
   priorityScheduler();
 

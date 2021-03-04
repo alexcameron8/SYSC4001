@@ -73,6 +73,8 @@ typedef struct processP
   enum process_state state;
   //priority of the process
   int priority;
+  //CPU execution time until process enters IO
+  int ioFrequencyRemaining;
 } processP;
 
 /**Structure that holds info for a process and a duration which will be changed each tick*/
@@ -139,13 +141,12 @@ typedef struct processMetrics
 {
   int pid;
   int throughput;
-  int avgTurnaroundTime;
-  int avgWaitingTime;
+  int turnaroundTime;
+  int waitingTime;
   //time between 2 IO Operations
   int avgResponseTime;
   //time when process finishes
   int finishTime;
   int arrivalTime;
   int timeInIO;
-
 } processMetrics;

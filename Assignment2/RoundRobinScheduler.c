@@ -21,8 +21,6 @@ processIORR *ioProcesses[MEMORY];
 int processRunning=false;
 //boolean value if a process has processArrived
 int processArrived = false;
-
-int calledThisTick = false;
 //start time of current process
 int tickStart = 0;
 //this array acts as the data structure in memory like a PCB with a memory set to 100 processes
@@ -64,7 +62,6 @@ void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int i
       list_of_processes[i].ioDuration = ioDuration;
       list_of_processes[i].state = PROCESS_READY;
       list_of_processes[i].ioFrequencyRemaining = ioFrequency;
-      printf("PID: %i Frequency:%i  remaining: %i\n", list_of_processes[i].pid, list_of_processes[i].ioFrequency, list_of_processes[i].ioFrequencyRemaining); //test
       return;
     }
   }
@@ -259,7 +256,6 @@ void checkProcessArrival(){
     //  printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing purposes
       enqueue(&readyQueue,temp);
       processArrived = true;
-      calledThisTick = true;
     }
   }
 }
@@ -273,7 +269,6 @@ void checkProcessArrival(){
    //process index in the array
    int processRunning=false; //boolean value if a process is running
    const char* tempOldState; //temp variable used to keep track of processes old states
-   int processesComplete = false; //boolean value to end simulation if all processes have finished execution
 
    //ensure that the output file is clear before appending data to it
    FILE *clearFile = fopen("output.txt","w");
@@ -281,9 +276,6 @@ void checkProcessArrival(){
    initIOProcesses(); //initialize the array of processes in IO (waiting state)
    selectionSort(list_of_processes);
    while(1){
-     if(processesComplete == true){ //all processes complete, end simulation
-       break;
-     }
      if(tickCount==0){
        checkProcessArrival();
      }
@@ -533,5 +525,4 @@ int main()
   //readFile("roundRobin.txt");
   //run Round Robin simulation
   roundrobin();
-
 }
