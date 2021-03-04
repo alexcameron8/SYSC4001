@@ -323,8 +323,10 @@ void setRemainingBurst(int priority){
     burstRemaining = QUANTUM_LOW;
   }else if(priority == 2){ //priority level is 2 then set quantum for new process to medium priority quantum
     burstRemaining = QUANTUM_MED;
-  }else{ //priority level is 0/1 then set quantum for new process to high priority quantum
+  }else if(priority>0){ //priority level is 0/1 then set quantum for new process to high priority quantum
     burstRemaining = QUANTUM_HIGH;
+  }else{
+    printf("wtf are u doing\n"); //test
   }
 }
 
@@ -352,7 +354,7 @@ void checkProcessArrival(){
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
       processP *temp = &list_of_processes[i];
-      printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount);
+      //printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing
       addToQueue(temp);
       processArrived = true;
     }
@@ -394,13 +396,12 @@ void priorityScheduler(){
       if(!processRunning){
         if(checkQueue() > 0){ //if there is a process in a queue
           currentProcess = removeFromQueue(checkQueue()); //remove first process from highest priority queue
-          setRemainingBurst(checkQueue());
+          setRemainingBurst(currentProcess->priority);
           //output data: READY => RUNNING
           tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_RUNNING;
           processRunning = true;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           tickStart = tickCount; //tick count the current process begins
         }
@@ -428,7 +429,7 @@ void priorityScheduler(){
           if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
             const char* tempOldState = getState(currentProcess->state); //RUNNING
             currentProcess->state = PROCESS_READY;
-            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
             processRunning = false;
             addToQueue(currentProcess); //put process back in ready queue
             currentProcess = NULL;
@@ -439,7 +440,6 @@ void priorityScheduler(){
           const char* tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_SUSPENDED;
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          //printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           processRunning = false;
           currentProcess = NULL;
@@ -451,7 +451,6 @@ void priorityScheduler(){
           currentProcess->ioFrequencyRemaining--;
           currentProcess->totalCPUTime--; //decreases total CPU execution time from current process
           burstRemaining--;
-  //        printf("\t\t\t1. PID: %i Remaining CPU Time: %i\n", currentProcess->pid, currentProcess->totalCPUTime); //test
           incrementIOProcesses(); //if a process is in IO then decrement time process in IO
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
@@ -470,7 +469,7 @@ void priorityScheduler(){
               tempOldState = getState(currentProcess->state);
               currentProcess->state = PROCESS_READY;
               outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-              printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+              printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
               addToQueue(currentProcess);
               currentProcess = NULL;
               processRunning = false;
@@ -480,19 +479,18 @@ void priorityScheduler(){
         }
 
         if(currentProcess !=NULL){ //check if current process quantum execution time completed
-          if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
-            printf("\t\t2. PID: %i Remaining CPU Time: %i\n", currentProcess->pid, currentProcess->totalCPUTime); //test
+          if(burstRemaining == 0 && currentProcess->totalCPUTime != 0 && currentProcess->ioFrequencyRemaining !=0){ //if burst time is 0 then process shall be preemted
             const char* tempOldState = getState(currentProcess->state); //RUNNING
             currentProcess->state = PROCESS_READY;
-            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
             processRunning = false;
             addToQueue(currentProcess); //put process back in ready queue
             currentProcess = NULL;
           }
         }
       }
-        if(currentProcess !=NULL){
-          printf("\t3. PID: %i Remaining CPU Time: %i\n", currentProcess->pid, currentProcess->totalCPUTime); //test
+
+        if(currentProcess !=NULL && currentProcess->ioFrequencyRemaining == 0){
           //send process to IO
           tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_WAITING;
@@ -570,6 +568,7 @@ int incrementIOProcesses(){
         p->process->state= PROCESS_READY;
         outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         printf("%d %d %s %s %i \n",tickCount, p->process->pid,tempOldState, getState(p->process->state),p->process->priority);
+        p->process->ioFrequencyRemaining = p->process->ioFrequency; //reset amount until IO runs again
         addToQueue(p->process);
         removeIOProcess(i); //clears process data at index
       }
