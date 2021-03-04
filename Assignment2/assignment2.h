@@ -34,6 +34,10 @@ typedef struct process
   enum process_state state;
   //index in the array to access this processes data/metrics
   int processData;
+  // amount of memory required to execute the process
+  int memoryRequired;
+  // slot ID of allocated memory slot
+  int memorySlotAllocated;
 } process;
 
 /**Structure that holds info for a process and a duration which will be changed each tick*/
@@ -149,3 +153,10 @@ typedef struct processMetrics
   int timeInIO;
 
 } processMetrics;
+
+typedef struct memorySlot
+{
+  int slotID;
+  int slotSize;
+  bool occupied;
+} memorySlot;

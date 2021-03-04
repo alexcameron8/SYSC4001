@@ -26,6 +26,8 @@ Queue readyQueue;
 processMetrics list_of_procMetrics[MEMORY];
 //index number assigned to each process to access specific process metrics
 int metricsIndex = 0;
+// array of memorySlot objects
+memorySlot list_of_memorySlots[4];
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -36,6 +38,8 @@ void removeIOProcess(int i);
 int incrementIOProcesses();
 void printIOProcs();
 void checkArrivalTime();
+void allocateMemory(process *p);
+void deallocateMemory(process *p);
 
 /*
  * Initialize all indexes of the list of processes (PCB) to be undefined.
@@ -46,11 +50,29 @@ void init_list_of_processes(){
     list_of_processes[i].state= PROCESS_UNDEFINED;
   }
 }
+
+
+/*
+ * Intializes all memory slot sizes and sets all their occupied flag to false.
+*/
+void init_list_of_memorySlots(){
+
+  list_of_memorySlots[0].slotSize = 500;
+  list_of_memorySlots[1].slotSize = 250;
+  list_of_memorySlots[2].slotSize = 150;
+  list_of_memorySlots[3].slotSize = 100;
+
+  for(int i = 0; i < 4; i++){
+    list_of_memorySlots[i].occupied = false;
+  }
+}
+
+
 /*
  * Add a process to the array of processes and assign the process information
  * (pid,arrival time, total CPU execution time, IO Frequency, IO Duration)
  */
-void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration){
+void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration, int memoryRequired){
   for(int i=0;i<MEMORY;i++){
     if(list_of_processes[i].state == PROCESS_UNDEFINED){
       list_of_processes[i].pid = pid;
@@ -59,6 +81,8 @@ void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int i
       list_of_processes[i].ioFrequency = ioFrequency;
       list_of_processes[i].ioDuration = ioDuration;
       list_of_processes[i].state = PROCESS_READY;
+      list_of_processes[i].memoryRequired = memoryRequired;
+      list_of_processes[i].memorySlotAllocated = 0;
       return;
     }
   }
@@ -164,7 +188,13 @@ void getProcessData(char *processData){
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
   printf("I/O Duration: %s \n",process_data);
-  list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration);
+
+  process_data = strtok(NULL,delim);
+  int memoryRequired = atoi(process_data);
+  printf("Memory Required: %s \n",process_data);
+
+
+  list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration, memoryRequired);
 }
 
 /*
@@ -304,6 +334,9 @@ void fcfs(){
 
       if(!processRunning){ //no process is currently running then assign a process to run
         if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
+
+          allocateMemory(readyQueue.head->process);
+
           currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
           //output data: READY => RUNNING
           tempOldState = getState(currentProcess->state);
@@ -323,7 +356,17 @@ void fcfs(){
           incrementIOProcesses(); //if a process is in IO then decrement time process in IO
         }
           const char* tempOldState = getState(currentProcess->state);
+
+          //Move to its own function
           currentProcess->state = PROCESS_SUSPENDED;
+
+          deallocateMemory(currentProcess);
+
+
+
+
+          // maybe reset the number, but not necessary
+
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           processRunning = false;
@@ -337,6 +380,8 @@ void fcfs(){
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
+            deallocateMemory(currentProcess);
+
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
@@ -357,6 +402,32 @@ void fcfs(){
       }
     }
   }
+
+void allocateMemory(process *p){
+  int tempSlotSize;
+  for(int i = 0; i < 4; i++){
+    if(list_of_memorySlots[i].slotSize >= p->memoryRequired && list_of_memorySlots[i].occupied == false){
+      p->memorySlotAllocated = list_of_memorySlots[i].slotID;
+      list_of_memorySlots[i].occupied = true;
+      tempSlotSize = list_of_memorySlots[i].slotSize;
+    }
+  }
+  printf("Process %i has been allocated %i memory\n", p->pid, tempSlotSize);
+}
+
+void deallocateMemory(process *p){
+  int tempSlotID = p->memorySlotAllocated;
+  p->memorySlotAllocated = 0;
+
+  for(int i = 0; i < 4; i++){
+    if(list_of_memorySlots[i].slotID == tempSlotID){
+      list_of_memorySlots[i].occupied = false;
+    }
+  }
+}
+
+
+
   /*
    * function used for TESTING purposes to view processes in the IO data structure
    */
@@ -425,6 +496,7 @@ int incrementIOProcesses(){
         outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         printf("%d %d %s %s \n",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         enqueue(&readyQueue, p->process); //IO has complete add process to ready queue
+        deallocateMemory(p->process);
         removeIOProcess(i); //clears process data at index
       }
     }
@@ -447,6 +519,7 @@ int main()
 {
   //init list of processes
   init_list_of_processes();
+  init_list_of_memorySlots();
   //read input file
   //readFile("fcfsPartC.txt");
   readFile("fcfsPartD.txt");
