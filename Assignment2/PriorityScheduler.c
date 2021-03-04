@@ -46,6 +46,8 @@ void printIOProcs();
 void checkArrivalTime();
 void checkProcPriority();
 void checkCurrProcPriority();
+void calculateTurnAroundTime();
+
 /*
  * Initialize all indexes of the list of processes (PCB) to be undefined.
  */
@@ -318,6 +320,7 @@ processP * removeFromQueue(int priority){
   }else{ //priority level is 0/1 then remove from the high priority queue
     return dequeue(&highPriorityQueue);
   }
+  return NULL;
 }
 /*
 * Sets the quantum value to the corresponding queue level
@@ -364,6 +367,9 @@ void checkProcessArrival(){
       //initialize process metrics
       temp->processData = metricsIndex;
       list_of_procMetrics[temp->processData].arrivalTime = tickCount;
+      list_of_procMetrics[temp->processData].waitingTime = 0;
+      list_of_procMetrics[temp->processData].turnaroundTime = 0;
+      list_of_procMetrics[temp->processData].totalCPUTime = temp->totalCPUTime;
       metricsIndex++;
     }
   }
@@ -454,6 +460,9 @@ void priorityScheduler(){
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           processRunning = false;
+          //calculate metrics
+          list_of_procMetrics[currentProcess->processData].finishTime = tickCount;
+          calculateTurnAroundTime();
           currentProcess = NULL;
           numProcSuspended++; //counter to track how many processes have finished executing
         }
@@ -471,6 +480,9 @@ void priorityScheduler(){
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
             processRunning = false;
+            //calculate metrics
+            list_of_procMetrics[currentProcess->processData].finishTime = tickCount;
+            calculateTurnAroundTime();
             currentProcess = NULL;
             numProcSuspended++; //counter to track how many processes have finished executing
             break;
@@ -597,12 +609,57 @@ void printQueue(PQueue q){
     q.head->next = q.head->next->next;
   }
 }
+
+/** Metric calculations */
+/**
+* Process wait time: Wait time = turnaroundTime - burst time
+*/
+void calculateProcessWaitTime(){
+  for(int i=0; i<metricsIndex; i++){
+    list_of_procMetrics[i].waitingTime=list_of_procMetrics[i].turnaroundTime - list_of_procMetrics[i].totalCPUTime;
+  }
+}
+/**
+* Average Process wait time: Sum of all processes wait times / num processes
+*/
+float calculateAverageWaitTime(){
+  calculateProcessWaitTime();
+  int totalWaitTime = 0;
+  for(int i=0;i<=metricsIndex;i++){
+    totalWaitTime = totalWaitTime + list_of_procMetrics[i].waitingTime;
+  }
+  return totalWaitTime / (metricsIndex + 1);
+}
+/**
+* Throughput: num of processes/ total simulation time
+*/
+float calculateThroughput(){
+  return (metricsIndex+1)/(double)tickCount;
+}
+/**
+* Turnaroundtime: for each process, turnaroundTime = process completion time - arrival time
+*/
+void calculateTurnAroundTime(){
+  list_of_procMetrics[currentProcess->processData].turnaroundTime = list_of_procMetrics[currentProcess->processData].finishTime - list_of_procMetrics[currentProcess->processData].arrivalTime;
+}
+/**
+* Average Turnaroundtime: SUM of all turnaround times / number of processes
+*/
+float calculateAverageTurnAroundTime(){
+  int totalTurnAroundTime = 0;
+  for(int i=0;i<=metricsIndex;i++){
+    totalTurnAroundTime = totalTurnAroundTime + list_of_procMetrics[i].turnaroundTime;
+  }
+  return totalTurnAroundTime / (metricsIndex + 1);
+}
+
+
 void calculateMetrics(){
   printf("--------------------------------------------\n");
   printf("METRIC CALCULATIONS\n");
-  printf("Average Throughput: %i\n",-1);
-  printf("Average Turnaround Time: %i\n",-1);
-  printf("Average Wait Time: %i\n",-1);
+  printf("Throughput: %f\n",calculateThroughput());
+  printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
+  printf("Average Wait Time: %f\n",calculateAverageWaitTime());
   printf("--------------------------------------------\n");
 }
 

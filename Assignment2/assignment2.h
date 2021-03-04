@@ -144,10 +144,12 @@ typedef struct processMetrics
   int pid;
   int throughput;
   int turnaroundTime;
+  //time each process is in readyqueue waiting
   int waitingTime;
   //time between 2 IO Operations
   int responseTime;
-  //time when process finishes
+  //time when process execution is released
+  int totalCPUTime; 
   int finishTime;
   int arrivalTime;
   int timeInIO;
