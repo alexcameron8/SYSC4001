@@ -22,10 +22,14 @@ int tickStart = 0; //start time of current process
 process list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
 Queue readyQueue;
+int totalNumProc = 0; //total number of processes
+int numProcSuspended = 0; //increment each time a process is SUSPENDED
+//metrics:
 //Array of processMetrics structs which holds metrics for each process
 processMetrics list_of_procMetrics[MEMORY];
 //index number assigned to each process to access specific process metrics
 int metricsIndex = 0;
+
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -51,6 +55,7 @@ void init_list_of_processes(){
  * (pid,arrival time, total CPU execution time, IO Frequency, IO Duration)
  */
 void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration){
+  totalNumProc++;
   for(int i=0;i<MEMORY;i++){
     if(list_of_processes[i].state == PROCESS_UNDEFINED){
       list_of_processes[i].pid = pid;
@@ -275,15 +280,13 @@ void fcfs(){
   int processRunning=false; //boolean value if a process is running
   process *currentProcess; //pointer to the current process running
   const char* tempOldState; //temp variable used to keep track of processes old states
-  int processesComplete = false; //boolean value to end simulation if all processes have finished execution
-
   //ensure that the output file is clear before appending data to it
   FILE *clearFile = fopen("output.txt","w");
   fclose(clearFile);
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   selectionSort(list_of_processes);
   while(1){
-    if(processesComplete == true){ //all processes complete, end simulation
+    if(totalNumProc == numProcSuspended){ //all processes complete, end simulation
       break;
     }
     if(tickCount==0){
@@ -328,6 +331,7 @@ void fcfs(){
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           processRunning = false;
           currentProcess = NULL;
+          numProcSuspended++; //counter to track how many processes have finished executing
       }else{ //there is ioFrequency
         while(tickCount < tickStart + currentProcess->ioFrequency){ //execute until process requests IO
           tickCount++;
@@ -340,7 +344,9 @@ void fcfs(){
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
+            //calculate metrics
             currentProcess = NULL;
+            numProcSuspended++; //counter to track how many processes have finished executing
             break;
           }
         }
@@ -439,6 +445,15 @@ void printQueue(){
   }
 }
 
+void calculateMetrics(){
+  printf("--------------------------------------------\n");
+  printf("METRIC CALCULATIONS\n");
+  printf("Average Throughput: %i\n",-1);
+  printf("Average Turnaround Time: %i\n",-1);
+  printf("Average Wait Time: %i\n",-1);
+  printf("--------------------------------------------\n");
+}
+
 /*
 * FCFS part c test file : "fcfsPartC.txt"
 * FCFS part d test file : "fcfsPartD.txt"
@@ -452,5 +467,5 @@ int main()
   readFile("fcfsPartD.txt");
   //run simulation
   fcfs();
-
+  calculateMetrics();
 }

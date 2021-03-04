@@ -27,14 +27,17 @@ int tickStart = 0; //start time of current process
 processP list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
 PQueue highPriorityQueue, medPriorityQueue, lowPriorityQueue;
-
-int readyCounter = 0;
-
 int burstRemaining;
+int totalNumProc = 0; //total number of processes
+int numProcSuspended = 0; //increment each time a process is SUSPENDED
+//metrics:
+//Array of processMetrics structs which holds metrics for each process
+processMetrics list_of_procMetrics[MEMORY];
+//index number assigned to each process to access specific process metrics
+int metricsIndex = 0;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
-void checkCurProcCPUTime();
 int initIOProcesses();
 int addIOProcess(processP *ioProc);
 void removeIOProcess(int i);
@@ -206,6 +209,7 @@ void getProcessData(char *processData){
   process_data = strtok(NULL,delim);
   int priority = atoi(process_data);
   printf("Process priority: %i \n", priority);
+  totalNumProc++;
   list_add(list_of_processes, pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration, priority);
 }
 /*
@@ -357,6 +361,10 @@ void checkProcessArrival(){
       //printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing
       addToQueue(temp);
       processArrived = true;
+      //initialize process metrics
+      temp->processData = metricsIndex;
+      list_of_procMetrics[temp->processData].arrivalTime = tickCount;
+      metricsIndex++;
     }
   }
 }
@@ -378,6 +386,9 @@ void priorityScheduler(){
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   selectionSort(list_of_processes);
   while(1){
+    if(totalNumProc == numProcSuspended){//all processes complete, end simulation
+      break;
+    }
     if(tickCount==0){
       checkProcessArrival();
     }
@@ -439,10 +450,12 @@ void priorityScheduler(){
         if(processRunning){
           const char* tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_SUSPENDED;
+          numProcSuspended++; //counter to track how many processes have finished executing
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           processRunning = false;
           currentProcess = NULL;
+          numProcSuspended++; //counter to track how many processes have finished executing
         }
       }else{
         while(currentProcess->ioFrequencyRemaining>0){ //execute until process requests IO
@@ -459,6 +472,7 @@ void priorityScheduler(){
             printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
             processRunning = false;
             currentProcess = NULL;
+            numProcSuspended++; //counter to track how many processes have finished executing
             break;
           }
           if(burstRemaining==0){ //if quantum for current process execution reached
@@ -576,17 +590,6 @@ int incrementIOProcesses(){
   }
   return 0;
 }
-/*
- * Check if the current process has finished executing
- */
-void checkCurProcCPUTime(){
-  if(currentProcess!= NULL && currentProcess->totalCPUTime==0){
-    const char* tempOldState = getState(currentProcess->state);
-    currentProcess->state = PROCESS_SUSPENDED;
-    printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-    processRunning = false;
-  }
-}
 
 void printQueue(PQueue q){
   while(q.head->next != NULL){
@@ -594,7 +597,14 @@ void printQueue(PQueue q){
     q.head->next = q.head->next->next;
   }
 }
-
+void calculateMetrics(){
+  printf("--------------------------------------------\n");
+  printf("METRIC CALCULATIONS\n");
+  printf("Average Throughput: %i\n",-1);
+  printf("Average Turnaround Time: %i\n",-1);
+  printf("Average Wait Time: %i\n",-1);
+  printf("--------------------------------------------\n");
+}
 
 /*
 * Priority Queue part c test file : "priorityInput.txt"
@@ -610,4 +620,5 @@ int main()
   //run simulation
   priorityScheduler();
 
+  calculateMetrics();
 }

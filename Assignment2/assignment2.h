@@ -75,6 +75,8 @@ typedef struct processP
   int priority;
   //CPU execution time until process enters IO
   int ioFrequencyRemaining;
+  //index in the array to access this processes data/metrics
+  int processData;
 } processP;
 
 /**Structure that holds info for a process and a duration which will be changed each tick*/
@@ -144,7 +146,7 @@ typedef struct processMetrics
   int turnaroundTime;
   int waitingTime;
   //time between 2 IO Operations
-  int avgResponseTime;
+  int responseTime;
   //time when process finishes
   int finishTime;
   int arrivalTime;

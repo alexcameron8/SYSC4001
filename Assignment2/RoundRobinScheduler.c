@@ -27,10 +27,16 @@ int tickStart = 0;
 processRR list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
 RRQueue readyQueue;
+int totalNumProc = 0; //total number of processes
+int numProcSuspended = 0; //increment each time a process is SUSPENDED
+//metrics:
+//Array of processMetrics structs which holds metrics for each process
+processMetrics list_of_procMetrics[MEMORY];
+//index number assigned to each process to access specific process metrics
+int metricsIndex = 0;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
-void checkCurProcCPUTime();
 int initIOProcesses();
 int addIOProcess(processRR *ioProc);
 void removeIOProcess(int i);
@@ -164,6 +170,7 @@ void getProcessData(char *processData){
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
   printf("I/O Duration: %s \n",process_data);
+  totalNumProc++;
   list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration);
 }
 /*
@@ -253,9 +260,13 @@ void checkProcessArrival(){
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
       processRR *temp = &list_of_processes[i];
-    //  printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing purposes
+      //printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing purposes
       enqueue(&readyQueue,temp);
       processArrived = true;
+      //initialize process metrics
+      temp->processData = metricsIndex;
+      list_of_procMetrics[temp->processData].arrivalTime = tickCount;
+      metricsIndex++;
     }
   }
 }
@@ -276,6 +287,9 @@ void checkProcessArrival(){
    initIOProcesses(); //initialize the array of processes in IO (waiting state)
    selectionSort(list_of_processes);
    while(1){
+     if(totalNumProc == numProcSuspended){ //all processes complete, end simulation
+       break;
+     }
      if(tickCount==0){
        checkProcessArrival();
      }
@@ -337,6 +351,7 @@ void checkProcessArrival(){
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
             currentProcess = NULL;
+            numProcSuspended++; //counter to track how many processes have finished executing
           }
        }else{
          while(currentProcess->ioFrequencyRemaining>0){ //execute until process requests IO
@@ -354,6 +369,7 @@ void checkProcessArrival(){
              processRunning = false;
              currentProcess = NULL;
              burstRemaining = QUANTUM;
+             numProcSuspended++; //counter to track how many processes have finished executing
              break;
            }
 
@@ -470,17 +486,6 @@ int incrementIOProcesses(){
   }
   return 0;
 }
-/*
- * Check if the current process has finished executing
- */
-void checkCurProcCPUTime(){
-  if(currentProcess!= NULL && currentProcess->totalCPUTime==0){
-    const char* tempOldState = getState(currentProcess->state);
-    currentProcess->state = PROCESS_SUSPENDED;
-    printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-    processRunning = false;
-  }
-}
 
 void printQueue(){
   printf("------------TEST------------\n");
@@ -512,9 +517,20 @@ void checkCurProcBurstTime(){
     }
   }
 }
+
+void calculateMetrics(){
+  printf("--------------------------------------------\n");
+  printf("METRIC CALCULATIONS\n");
+  printf("Average Throughput: %i\n",-1);
+  printf("Average Turnaround Time: %i\n",-1);
+  printf("Average Wait Time: %i\n",-1);
+  printf("--------------------------------------------\n");
+}
+
+
 /*
 * Round Robin part c test file : "roundRobin.txt"
-* FCFS part d test file : "fcfsPartD.txt"
+* Round Robin part d test file : "roundRobinIO.txt"
 */
 int main()
 {
@@ -525,4 +541,5 @@ int main()
   //readFile("roundRobin.txt");
   //run Round Robin simulation
   roundrobin();
+  calculateMetrics();
 }
