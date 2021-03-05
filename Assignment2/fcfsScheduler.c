@@ -41,7 +41,6 @@ void removeIOProcess(int i);
 int incrementIOProcesses();
 void printIOProcs();
 void checkArrivalTime();
-void incrementProcessWaitTime();
 void calculateTurnAroundTime();
 float calculateAverageWaitTime();
 /*
@@ -121,34 +120,6 @@ void selectionSort(struct process list_of_processes[MEMORY])
         swap(&list_of_processes[min_idx], &list_of_processes[i]);
     }
 }
-
-//test
-/*
-* Function to iterate through ready queue and find process with lowest arrival time.
-*/
-process* smallestArrProcess(Queue q)
-{
-    process* min = NULL;
-    Queue temp = q;
-    // Check loop while head not equal to NULL
-    while (temp.head != NULL) {
-
-        // If min is greater then head->data then
-        // assign value of head->data to min
-        // otherwise node point to next node.
-        if(min == NULL){
-          min = temp.head->process;
-        }
-        if (min->arrivalTime > temp.head->process->arrivalTime)
-            min = temp.head->process;
-
-        temp.head = temp.head->next;
-    }
-    printf("pid: %i , arrival: %i\n", min->pid, min->arrivalTime);
-    return min;
-}
-
-//test above delete later
 
 /*
  * This function parses a line from the input file and splits the information

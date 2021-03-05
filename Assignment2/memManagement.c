@@ -6,7 +6,10 @@
 
 //predetermined memory for array of processes
 #define MEMORY 100
-
+#define SLOT0 500
+#define SLOT1 250
+#define SLOT2 150
+#define SLOT3 100
 //tick counter
 int tickCount = 0;
 //current running process
@@ -22,12 +25,16 @@ int tickStart = 0; //start time of current process
 process list_of_processes[MEMORY];
 //ready queue which contains queue of processes in ready state
 Queue readyQueue;
+int totalNumProc = 0; //total number of processes
+int numProcSuspended = 0; //increment each time a process is SUSPENDED
+// array of memorySlot objects
+memorySlot list_of_memorySlots[4];
+//metrics:
 //Array of processMetrics structs which holds metrics for each process
 processMetrics list_of_procMetrics[MEMORY];
 //index number assigned to each process to access specific process metrics
+//also acts as size for array
 int metricsIndex = 0;
-// array of memorySlot objects
-memorySlot list_of_memorySlots[4];
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -38,8 +45,10 @@ void removeIOProcess(int i);
 int incrementIOProcesses();
 void printIOProcs();
 void checkArrivalTime();
-void allocateMemory(process *p);
+int allocateMemory();
 void deallocateMemory(process *p);
+void calculateTurnAroundTime();
+float calculateAverageWaitTime();
 
 /*
  * Initialize all indexes of the list of processes (PCB) to be undefined.
@@ -57,10 +66,10 @@ void init_list_of_processes(){
 */
 void init_list_of_memorySlots(){
 
-  list_of_memorySlots[0].slotSize = 500;
-  list_of_memorySlots[1].slotSize = 250;
-  list_of_memorySlots[2].slotSize = 150;
-  list_of_memorySlots[3].slotSize = 100;
+  list_of_memorySlots[0].slotSize = SLOT0; //500
+  list_of_memorySlots[1].slotSize = SLOT1; //250
+  list_of_memorySlots[2].slotSize = SLOT2; //150
+  list_of_memorySlots[3].slotSize = SLOT3; //100
 
   for(int i = 0; i < 4; i++){
     list_of_memorySlots[i].occupied = false;
@@ -73,6 +82,7 @@ void init_list_of_memorySlots(){
  * (pid,arrival time, total CPU execution time, IO Frequency, IO Duration)
  */
 void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int ioDuration, int memoryRequired){
+  totalNumProc++;
   for(int i=0;i<MEMORY;i++){
     if(list_of_processes[i].state == PROCESS_UNDEFINED){
       list_of_processes[i].pid = pid;
@@ -137,34 +147,6 @@ void selectionSort(struct process list_of_processes[MEMORY])
         swap(&list_of_processes[min_idx], &list_of_processes[i]);
     }
 }
-
-//test
-/*
-* Function to iterate through ready queue and find process with lowest arrival time.
-*/
-process* smallestArrProcess(Queue q)
-{
-    process* min = NULL;
-    Queue temp = q;
-    // Check loop while head not equal to NULL
-    while (temp.head != NULL) {
-
-        // If min is greater then head->data then
-        // assign value of head->data to min
-        // otherwise node point to next node.
-        if(min == NULL){
-          min = temp.head->process;
-        }
-        if (min->arrivalTime > temp.head->process->arrivalTime)
-            min = temp.head->process;
-
-        temp.head = temp.head->next;
-    }
-    printf("pid: %i , arrival: %i\n", min->pid, min->arrivalTime);
-    return min;
-}
-
-//test above delete later
 
 /*
  * This function parses a line from the input file and splits the information
@@ -290,6 +272,9 @@ void checkProcessArrival(){
       //initialize process metrics
       temp->processData = metricsIndex;
       list_of_procMetrics[temp->processData].arrivalTime = tickCount;
+      list_of_procMetrics[temp->processData].waitingTime = 0;
+      list_of_procMetrics[temp->processData].turnaroundTime = 0;
+      list_of_procMetrics[temp->processData].totalCPUTime = temp->totalCPUTime;
       metricsIndex++;
     }
   }
@@ -303,9 +288,7 @@ void fcfs(){
   printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
   //process index in the array
   int processRunning=false; //boolean value if a process is running
-  process *currentProcess; //pointer to the current process running
   const char* tempOldState; //temp variable used to keep track of processes old states
-  int processesComplete = false; //boolean value to end simulation if all processes have finished execution
 
   //ensure that the output file is clear before appending data to it
   FILE *clearFile = fopen("output.txt","w");
@@ -313,7 +296,7 @@ void fcfs(){
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   selectionSort(list_of_processes);
   while(1){
-    if(processesComplete == true){ //all processes complete, end simulation
+    if(totalNumProc == numProcSuspended){ //all processes complete, end simulation
       break;
     }
     if(tickCount==0){
@@ -334,17 +317,20 @@ void fcfs(){
 
       if(!processRunning){ //no process is currently running then assign a process to run
         if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
-
-          allocateMemory(readyQueue.head->process);
-
-          currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
-          //output data: READY => RUNNING
-          tempOldState = getState(currentProcess->state);
-          currentProcess->state = PROCESS_RUNNING;
-          processRunning = true;
-          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-          tickStart = tickCount; //tick count the current process begins
+            currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
+            if(allocateMemory()){ //if a process can be allocated =>
+            //output data: READY => RUNNING
+            tempOldState = getState(currentProcess->state);
+            currentProcess->state = PROCESS_RUNNING;
+            processRunning = true;
+            outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            tickStart = tickCount; //tick count the current process begins
+          }else{ //memory could not be allocated => move to back of readyQueue
+            currentProcess = dequeue(&readyQueue);
+            enqueue(&readyQueue,currentProcess);
+            currentProcess=NULL;
+          }
         }
       }
 
@@ -359,18 +345,16 @@ void fcfs(){
 
           //Move to its own function
           currentProcess->state = PROCESS_SUSPENDED;
-
           deallocateMemory(currentProcess);
-
-
-
-
-          // maybe reset the number, but not necessary
 
           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           processRunning = false;
+          //calculate metrics
+          list_of_procMetrics[currentProcess->processData].finishTime = tickCount;
+          calculateTurnAroundTime();
           currentProcess = NULL;
+          numProcSuspended++; //counter to track how many processes have finished executing
       }else{ //there is ioFrequency
         while(tickCount < tickStart + currentProcess->ioFrequency){ //execute until process requests IO
           tickCount++;
@@ -385,7 +369,11 @@ void fcfs(){
             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
+            //calculate metrics
+            list_of_procMetrics[currentProcess->processData].finishTime = tickCount;
+            calculateTurnAroundTime();
             currentProcess = NULL;
+            numProcSuspended++; //counter to track how many processes have finished executing
             break;
           }
         }
@@ -402,18 +390,39 @@ void fcfs(){
       }
     }
   }
-
-void allocateMemory(process *p){
-  int tempSlotSize;
-  for(int i = 0; i < 4; i++){
-    if(list_of_memorySlots[i].slotSize >= p->memoryRequired && list_of_memorySlots[i].occupied == false){
-      p->memorySlotAllocated = list_of_memorySlots[i].slotID;
-      list_of_memorySlots[i].occupied = true;
-      tempSlotSize = list_of_memorySlots[i].slotSize;
+/**
+* Function which takes a process as an argument and attempts to allocate memory if a partition is available
+*/
+int allocateMemory(){
+  if(currentProcess->memoryRequired < SLOT0){ //ensure that process is less than max partition slot
+    for(int i = 0; i < 4; i++){
+      if(list_of_memorySlots[i].occupied == false){
+        if(list_of_memorySlots[i].slotSize >= currentProcess->memoryRequired){
+          currentProcess->memorySlotAllocated = list_of_memorySlots[i].slotID;
+          list_of_memorySlots[i].occupied = true;
+          printf("Process %i has been allocated %i memory\n", currentProcess->pid, list_of_memorySlots[i].slotSize);
+          return true;
+        }
+      }
     }
+  }else{ //process will never be able to run because of memory requirements
+    const char* tempOldState = getState(currentProcess->state);
+    currentProcess->state = PROCESS_SUSPENDED;
+    outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+    printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+    processRunning = false;
+    //calculate metrics
+    list_of_procMetrics[currentProcess->processData].finishTime = tickCount;
+    calculateTurnAroundTime();
+    printf("Process %i could can never be allocated to main memory, suspending process.\n", currentProcess->pid);
+    currentProcess = NULL;
+    numProcSuspended++; //counter to track how many processes have finished executing
+    return false;
   }
-  printf("Process %i has been allocated %i memory\n", p->pid, tempSlotSize);
+  printf("Process %i could not be allocated to memory\n", currentProcess->pid);
+  return false;
 }
+
 
 void deallocateMemory(process *p){
   int tempSlotID = p->memorySlotAllocated;
@@ -425,8 +434,6 @@ void deallocateMemory(process *p){
     }
   }
 }
-
-
 
   /*
    * function used for TESTING purposes to view processes in the IO data structure
@@ -510,10 +517,61 @@ void printQueue(){
     readyQueue.head->next = readyQueue.head->next->next;
   }
 }
+/** Metric calculations */
+/**
+* Process wait time: Wait time = turnaroundTime - burst time
+*/
+void calculateProcessWaitTime(){
+  for(int i=0; i<metricsIndex; i++){
+    list_of_procMetrics[i].waitingTime=list_of_procMetrics[i].turnaroundTime - list_of_procMetrics[i].totalCPUTime;
+  }
+}
+/**
+* Average Process wait time: Sum of all processes wait times / num processes
+*/
+float calculateAverageWaitTime(){
+  calculateProcessWaitTime();
+  int totalWaitTime = 0;
+  for(int i=0;i<=metricsIndex;i++){
+    totalWaitTime = totalWaitTime + list_of_procMetrics[i].waitingTime;
+  }
+  return totalWaitTime / (metricsIndex + 1);
+}
+/**
+* Throughput: num of processes/ total simulation time
+*/
+float calculateThroughput(){
+  return (metricsIndex+1)/(double)tickCount;
+}
+/**
+* Turnaroundtime: for each process, turnaroundTime = process completion time - arrival time
+*/
+void calculateTurnAroundTime(){
+  list_of_procMetrics[currentProcess->processData].turnaroundTime = list_of_procMetrics[currentProcess->processData].finishTime - list_of_procMetrics[currentProcess->processData].arrivalTime;
+}
+/**
+* Average Turnaroundtime: SUM of all turnaround times / number of processes
+*/
+float calculateAverageTurnAroundTime(){
+  int totalTurnAroundTime = 0;
+  for(int i=0;i<=metricsIndex;i++){
+    totalTurnAroundTime = totalTurnAroundTime + list_of_procMetrics[i].turnaroundTime;
+  }
+  return totalTurnAroundTime / (metricsIndex + 1);
+}
 
+
+void calculateMetrics(){
+  printf("--------------------------------------------\n");
+  printf("METRIC CALCULATIONS\n");
+  printf("Throughput: %f\n",calculateThroughput());
+  printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
+  printf("Average Wait Time: %f\n",calculateAverageWaitTime());
+  printf("--------------------------------------------\n");
+}
 /*
-* FCFS part c test file : "fcfsPartC.txt"
-* FCFS part d test file : "fcfsPartD.txt"
+* FCFS scheduler that implements Memory Management by utilizing a first fit picking
+* algorithm.
 */
 int main()
 {
@@ -521,9 +579,8 @@ int main()
   init_list_of_processes();
   init_list_of_memorySlots();
   //read input file
-  //readFile("fcfsPartC.txt");
-  readFile("fcfsPartD.txt");
+  readFile("InputFiles/fcfsPartD.txt");
   //run simulation
   fcfs();
-
+  calculateMetrics();
 }
