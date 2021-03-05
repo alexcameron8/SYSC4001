@@ -385,7 +385,7 @@ void checkProcessArrival(){
              break;
            }
 
-           if(burstRemaining==0){ //if quantum for current process execution reached
+           if(burstRemaining==0 ){ //if quantum for current process execution reached
              if(currentProcess->ioFrequencyRemaining >0){ //case where process has executed max quantum time but not terminated or request IO yet
                tempOldState = getState(currentProcess->state);
                currentProcess->state = PROCESS_READY;
@@ -401,7 +401,7 @@ void checkProcessArrival(){
          }
 
          if(currentProcess !=NULL){ //check if current process quantum execution time completed
-           if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
+           if(burstRemaining == 0 && currentProcess->totalCPUTime != 0 && currentProcess->ioFrequencyRemaining!=0){ //if burst time is 0 then process shall be preemted
              const char* tempOldState = getState(currentProcess->state); //RUNNING
              currentProcess->state = PROCESS_READY;
              printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
@@ -591,7 +591,7 @@ int main()
   //init list of processes
   init_list_of_processes();
   //read input file
-  readFile("roundRobinIO.txt");
+  readFile("InputFiles/roundRobinIO.txt");
   //readFile("roundRobin.txt");
   //run Round Robin simulation
   roundrobin();
