@@ -35,6 +35,12 @@ processMetrics list_of_procMetrics[MEMORY];
 //index number assigned to each process to access specific process metrics
 //also acts as size for array
 int metricsIndex = 0;
+
+int totalMemAllocated = 0;
+int numOfAllocations = 0;
+
+int memAvailable = SLOT0 + SLOT1 + SLOT2 + SLOT3;
+
 FILE *file;
 
 //func prototypes
@@ -47,7 +53,8 @@ int incrementIOProcesses();
 void printIOProcs();
 void checkArrivalTime();
 int allocateMemory();
-void deallocateMemory(process *p);
+void deallocateMemory();
+void checkFreeMemeory();
 void calculateTurnAroundTime();
 float calculateAverageWaitTime();
 
@@ -339,7 +346,7 @@ void fcfs(int i){
 
           //Move to its own function
           currentProcess->state = PROCESS_SUSPENDED;
-          deallocateMemory(currentProcess);
+          deallocateMemory();
 
           outputData("outputMM.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
@@ -358,7 +365,7 @@ void fcfs(int i){
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
-            deallocateMemory(currentProcess);
+            deallocateMemory();
 
             outputData("outputMM.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
@@ -388,16 +395,29 @@ void fcfs(int i){
 * Function which takes a process as an argument and attempts to allocate memory if a partition is available
 */
 int allocateMemory(){
+  //int tempMemAvailable = SLOT0 + SLOT1 + SLOT2 + SLOT3;
+  int memAllocated;
   if(currentProcess->memoryRequired < SLOT0){ //ensure that process is less than max partition slot
     for(int i = 0; i < 4; i++){
       if(list_of_memorySlots[i].occupied == false){
         if(list_of_memorySlots[i].slotSize >= currentProcess->memoryRequired){
           currentProcess->memorySlotAllocated = list_of_memorySlots[i].slotID;
           list_of_memorySlots[i].occupied = true;
+          memAllocated = list_of_memorySlots[i].slotSize;
+          printf("%iK of memory has been allocated.\n", list_of_memorySlots[i].slotSize);
           //printf("Process %i has been allocated %i memory\n", currentProcess->pid, list_of_memorySlots[i].slotSize); testing
+          totalMemAllocated += memAllocated;
+          numOfAllocations++;
+          printf("%ik of memory has been allocated thus far\n", totalMemAllocated);
+          checkFreeMemeory();
+          memAvailable -= memAllocated;
+          //tempMemAvailable -= memAllocated;
+          //printf("%ik of memory is still available.\n", tempMemAvailable);
+          printf("%ik of memory is still available.\n", memAvailable);
           return true;
         }
       }
+
     }
   }else{ //process will never be able to run because of memory requirements
     const char* tempOldState = getState(currentProcess->state);
@@ -415,18 +435,49 @@ int allocateMemory(){
   }
   printf("Process %i could not be allocated to memory\n", currentProcess->pid);
   return false;
+
+
 }
 
 
-void deallocateMemory(process *p){
-  int tempSlotID = p->memorySlotAllocated;
-  p->memorySlotAllocated = 0;
+// void deallocateMemory(process *p){
+//   int memDeallocated;
+//   int tempSlotID = p->memorySlotAllocated;
+//   p->memorySlotAllocated = 0;
+//
+//   for(int i = 0; i < 4; i++){
+//     if(list_of_memorySlots[i].slotID == tempSlotID){
+//       list_of_memorySlots[i].occupied = false;
+//       memDeallocated = list_of_memorySlots[i].slotSize;
+//     }
+//   }
+//   memAvailable += memDeallocated;
+// }
+
+
+void deallocateMemory(){
+  int memDeallocated;
+  int tempSlotID = currentProcess->memorySlotAllocated;
+  currentProcess->memorySlotAllocated = 0;
 
   for(int i = 0; i < 4; i++){
     if(list_of_memorySlots[i].slotID == tempSlotID){
       list_of_memorySlots[i].occupied = false;
+      memDeallocated = list_of_memorySlots[i].slotSize;
     }
   }
+  memAvailable += memDeallocated;
+}
+
+
+void checkFreeMemeory(){
+  printf("Slots: ");
+  for(int i=0; i < 4; i++){
+    if(list_of_memorySlots[i].occupied == false){
+      printf("%i, ", list_of_memorySlots[i].slotSize);
+    }
+  }
+  printf("are free.\n");
 }
 
   /*
@@ -554,6 +605,12 @@ float calculateAverageTurnAroundTime(){
   return totalTurnAroundTime / (metricsIndex);
 }
 
+float calculateMemory(){
+
+  return (totalMemAllocated)/(double)numOfAllocations;
+
+}
+
 
 void calculateMetrics(int i){
   printf("--------------------------------------------\n");
@@ -561,6 +618,7 @@ void calculateMetrics(int i){
   printf("Throughput: %f\n",calculateThroughput());
   printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
   printf("Average Wait Time: %f\n",calculateAverageWaitTime());
+  printf("Average Memory Allocated: %f\n", calculateMemory());
   printf("--------------------------------------------\n");
 }
 
@@ -572,6 +630,9 @@ void resetVariables(){
   memset(list_of_procMetrics, 0, sizeof(list_of_procMetrics)); //reset list_of_procMetrics
   //index number assigned to each process to access specific process metrics
   metricsIndex = 0;
+  totalMemAllocated = 0;
+  numOfAllocations = 0;
+  memAvailable = SLOT0 + SLOT1 + SLOT2 + SLOT3;
 }
 
 
