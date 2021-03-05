@@ -30,7 +30,7 @@ processMetrics list_of_procMetrics[MEMORY];
 //index number assigned to each process to access specific process metrics
 //also acts as size for array
 int metricsIndex = 0;
-
+FILE *file;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -130,19 +130,14 @@ void getProcessData(char *processData){
   char *process_data;
   process_data = strtok(processData,delim);
   int pid = atoi(process_data);
-  printf("pid: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int arrivalTime = atoi(process_data);
-  printf("Arrival Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int totalCPUTime = atoi(process_data);
-  printf("Total CPU Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioFrequency = atoi(process_data);
-  printf("I/O Frequency: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
-  printf("I/O Duration: %s \n",process_data);
   list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration);
 }
 
@@ -170,7 +165,7 @@ const char* getState(enum process_state state)
 int readFile(const char *fileName){
     char text[1000];
     //Read file
-    FILE *file = fopen(fileName,"r");
+    file = fopen(fileName,"r");
     if (!file)
         return 1;
 
@@ -185,7 +180,7 @@ fclose(file);
    *  It outputs data for a state transition each time a process changes states.
    */
 int outputData(const char *fileName, int time, int pid, const char *oldState, const char * newState){
-    FILE *file = fopen(fileName,"a+");
+    file = fopen(fileName,"a+");
     if(file == NULL){
       printf("File Exception Error.");
       return 0;
@@ -233,7 +228,6 @@ void checkProcessArrival(){
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
       process *temp = &list_of_processes[i];
-      printf("PID: %i process arrived\n", temp->pid);
       enqueue(&readyQueue,temp);
       processArrived = true;
       //initialize process metrics
@@ -251,14 +245,15 @@ void checkProcessArrival(){
  * This function runs the simulation for handling the processes and sending to different states, such as,
  * RUNNING, READY, WAITING and TERMINATED.
  */
-void fcfs(){
-  printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
+void fcfs(int i){
+  printf("First Come First Serve Scheduler Simulation # %i  \nState Sequence: \nTIME PID OLDSTATE NEWSTATE\n", i+1);
   //process index in the array
   int processRunning=false; //boolean value if a process is running
   const char* tempOldState; //temp variable used to keep track of processes old states
+  file = fopen("outputFCFS.txt","a+");
+  fprintf(file,"First Come First Serve Scheduler Simulation # %i  \nState Sequence: \nTIME PID OLDSTATE NEWSTATE\n", i+1);
+  fclose(file);
   //ensure that the output file is clear before appending data to it
-  FILE *clearFile = fopen("output.txt","w");
-  fclose(clearFile);
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   selectionSort(list_of_processes);
   while(1){
@@ -288,7 +283,7 @@ void fcfs(){
           tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_RUNNING;
           processRunning = true;
-          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          outputData("outputFCFS.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           tickStart = tickCount; //tick count the current process begins
         }
@@ -303,7 +298,7 @@ void fcfs(){
         }
           const char* tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_SUSPENDED;
-          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          outputData("outputFCFS.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           processRunning = false;
           //calculate metrics
@@ -320,7 +315,7 @@ void fcfs(){
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
-            outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            outputData("outputFCFS.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
             //calculate metrics
@@ -339,7 +334,7 @@ void fcfs(){
         processRunning = false;
         addIOProcess(currentProcess); //add the process to the array of IO
         //send data (RUNNING => WAITING)
-        outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+        outputData("outputFCFS.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
         printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
       }
     }
@@ -409,7 +404,7 @@ int incrementIOProcesses(){
         processIO *p = ioProcesses[i];
         const char* tempOldState = getState(p->process->state);
         p->process->state= PROCESS_READY;
-        outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
+        outputData("outputFCFS.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         printf("%d %d %s %s \n",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         enqueue(&readyQueue, p->process); //IO has complete add process to ready queue
         removeIOProcess(i); //clears process data at index
@@ -469,13 +464,23 @@ float calculateAverageTurnAroundTime(){
 }
 
 
-void calculateMetrics(){
+void calculateMetrics(int i){
   printf("--------------------------------------------\n");
-  printf("METRIC CALCULATIONS\n");
+  printf("METRIC CALCULATIONS SIMULATION: %i\n", i+1);
   printf("Throughput: %f\n",calculateThroughput());
   printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
   printf("Average Wait Time: %f\n",calculateAverageWaitTime());
   printf("--------------------------------------------\n");
+}
+
+void resetVariables(){
+  tickCount = 0;
+  totalNumProc = 0; //total number of processes
+  numProcSuspended = 0; //increment each time a process is SUSPENDED
+  memset(list_of_processes,0,sizeof(list_of_processes));
+  memset(list_of_procMetrics, 0, sizeof(list_of_procMetrics)); //reset list_of_procMetrics
+  //index number assigned to each process to access specific process metrics
+  metricsIndex = 0;
 }
 
 /*
@@ -484,12 +489,19 @@ void calculateMetrics(){
 */
 int main()
 {
-  //init list of processes
-  init_list_of_processes();
-  //read input file
-  //readFile("fcfsPartC.txt");
-  readFile("InputFiles/test.txt");
-  //run simulation
-  fcfs();
-  calculateMetrics();
+  //clear file before execution
+  FILE *clearFile = fopen("outputFCFS.txt","w");
+  fclose(clearFile);
+  for(int i=0;i<10;i++){
+    //init list of processes
+    init_list_of_processes();
+    //read input files 0-9
+    char fileName[22];
+    sprintf(fileName,"InputFiles/input%d.txt",i);
+    readFile(fileName);
+    //run simulation
+    fcfs(i);
+    calculateMetrics(i);
+    resetVariables();
+  }
 }

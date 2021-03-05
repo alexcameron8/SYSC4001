@@ -35,6 +35,7 @@ int numProcSuspended = 0; //increment each time a process is SUSPENDED
 processMetrics list_of_procMetrics[MEMORY];
 //index number assigned to each process to access specific process metrics
 int metricsIndex = 0;
+FILE *file;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -195,22 +196,16 @@ void getProcessData(char *processData){
   char *process_data;
   process_data = strtok(processData,delim);
   int pid = atoi(process_data);
-  printf("pid: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int arrivalTime = atoi(process_data);
-  printf("Arrival Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int totalCPUTime = atoi(process_data);
-  printf("Total CPU Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioFrequency = atoi(process_data);
-  printf("I/O Frequency: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
-  printf("I/O Duration: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int priority = atoi(process_data);
-  printf("Process priority: %i \n", priority);
   totalNumProc++;
   list_add(list_of_processes, pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration, priority);
 }
@@ -253,7 +248,7 @@ fclose(file);
    *  It outputs data for a state transition each time a process changes states.
    */
 int outputData(const char *fileName, int time, int pid, const char *oldState, const char * newState){
-    FILE *file = fopen(fileName,"a+");
+    file = fopen(fileName,"a+");
     if(file == NULL){
       printf("File Exception Error.");
       return 0;
@@ -379,18 +374,18 @@ void checkProcessArrival(){
  * This function runs the simulation for handling the processes and sending to different states, such as,
  * RUNNING, READY, WAITING and TERMINATED.
  */
-void priorityScheduler(){
-  printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE PRIORITY\n");
+void priorityScheduler(int i){
+  printf("Priority Scheduler Simulation # %i  \nState Sequence: \nTIME PID OLDSTATE NEWSTATE PRIORITY\n", i+1);
   //process index in the array
   int processRunning=false; //boolean value if a process is running
   //no processes have arrived  const char* tempOldState; //temp variable used to keep track of processes old states
   const char* tempOldState; //temp variable used to keep track of processes old states
 
-  //ensure that the output file is clear before appending data to it
-  FILE *clearFile = fopen("output.txt","w");
-  fclose(clearFile);
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   selectionSort(list_of_processes);
+  file = fopen("outputFCFS.txt","a+");
+  fprintf(file,"Priority Scheduler Simulation # %i  \nState Sequence: \nTIME PID OLDSTATE NEWSTATE PRIORITY\n", i+1);
+  fclose(file);
   while(1){
     if(totalNumProc == numProcSuspended){//all processes complete, end simulation
       break;
@@ -418,7 +413,7 @@ void priorityScheduler(){
           tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_RUNNING;
           processRunning = true;
-          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          outputData("outputP.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           tickStart = tickCount; //tick count the current process begins
         }
@@ -456,8 +451,7 @@ void priorityScheduler(){
         if(processRunning){
           const char* tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_SUSPENDED;
-          numProcSuspended++; //counter to track how many processes have finished executing
-          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          outputData("outputP.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
           processRunning = false;
           //calculate metrics
@@ -477,7 +471,7 @@ void priorityScheduler(){
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
-            outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            outputData("outputP.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
             processRunning = false;
             //calculate metrics
@@ -494,7 +488,7 @@ void priorityScheduler(){
               }
               tempOldState = getState(currentProcess->state);
               currentProcess->state = PROCESS_READY;
-              outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+              outputData("outputP.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
               printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
               addToQueue(currentProcess);
               currentProcess = NULL;
@@ -505,7 +499,7 @@ void priorityScheduler(){
         }
 
         if(currentProcess !=NULL){ //check if current process quantum execution time completed
-          if(burstRemaining == 0 && currentProcess->totalCPUTime != 0 && currentProcess->ioFrequencyRemaining !=0){ //if burst time is 0 then process shall be preemted
+          if(burstRemaining == 0 && currentProcess->totalCPUTime != 0 && currentProcess->ioFrequencyRemaining !=0 && currentProcess->ioFrequencyRemaining!=0){ //if burst time is 0 then process shall be preemted
             const char* tempOldState = getState(currentProcess->state); //RUNNING
             currentProcess->state = PROCESS_READY;
             printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
@@ -523,7 +517,7 @@ void priorityScheduler(){
           processRunning = false;
           addIOProcess(currentProcess); //add the process to the array of IO
           //send data (RUNNING => WAITING)
-          outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+          outputData("outputP.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s %i \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state), currentProcess->priority);
       }
     }
@@ -592,7 +586,7 @@ int incrementIOProcesses(){
         processIOP *p = ioProcesses[i];
         const char* tempOldState = getState(p->process->state);
         p->process->state= PROCESS_READY;
-        outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
+        outputData("outputP.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         printf("%d %d %s %s %i \n",tickCount, p->process->pid,tempOldState, getState(p->process->state),p->process->priority);
         p->process->ioFrequencyRemaining = p->process->ioFrequency; //reset amount until IO runs again
         addToQueue(p->process);
@@ -654,14 +648,25 @@ float calculateAverageTurnAroundTime(){
 }
 
 
-void calculateMetrics(){
+void calculateMetrics(int i){
   printf("--------------------------------------------\n");
-  printf("METRIC CALCULATIONS\n");
+  printf("METRIC CALCULATIONS SIMULATION: %i\n", i+1);
   printf("Throughput: %f\n",calculateThroughput());
   printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
   printf("Average Wait Time: %f\n",calculateAverageWaitTime());
   printf("--------------------------------------------\n");
 }
+
+void resetVariables(){
+  tickCount = 0;
+  totalNumProc = 0; //total number of processes
+  numProcSuspended = 0; //increment each time a process is SUSPENDED
+  memset(list_of_processes,0,sizeof(list_of_processes));
+  memset(list_of_procMetrics, 0, sizeof(list_of_procMetrics)); //reset list_of_procMetrics
+  //index number assigned to each process to access specific process metrics
+  metricsIndex = 0;
+}
+
 
 /*
 * Priority Queue part c test file : "priorityInput.txt"
@@ -669,13 +674,19 @@ void calculateMetrics(){
 */
 int main()
 {
-  //init list of processes
-  init_list_of_processes();
-  //read input file
-  //readFile("priorityInput.txt");
-  readFile("priorityInputIO.txt");
-  //run simulation
-  priorityScheduler();
-
-  calculateMetrics();
+  //clear file before execution
+  FILE *clearFile = fopen("outputP.txt","w");
+  fclose(clearFile);
+  for(int i=0;i<10;i++){
+    //init list of processes
+    init_list_of_processes();
+    //read input file
+    char fileName[22];
+    sprintf(fileName,"InputFiles/input%d.txt",i);
+    readFile(fileName);
+    //run simulation
+    priorityScheduler(i);
+    calculateMetrics(i);
+    resetVariables();
+  }
 }

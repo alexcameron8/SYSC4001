@@ -34,6 +34,7 @@ int numProcSuspended = 0; //increment each time a process is SUSPENDED
 processMetrics list_of_procMetrics[MEMORY];
 //index number assigned to each process to access specific process metrics
 int metricsIndex = 0;
+FILE *file;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -160,19 +161,19 @@ void getProcessData(char *processData){
   char *process_data;
   process_data = strtok(processData,delim);
   int pid = atoi(process_data);
-  printf("pid: %s \n",process_data);
+  //printf("pid: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int arrivalTime = atoi(process_data);
-  printf("Arrival Time: %s \n",process_data);
+  //printf("Arrival Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int totalCPUTime = atoi(process_data);
-  printf("Total CPU Time: %s \n",process_data);
+  //printf("Total CPU Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioFrequency = atoi(process_data);
-  printf("I/O Frequency: %s \n",process_data);
+  //printf("I/O Frequency: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
-  printf("I/O Duration: %s \n",process_data);
+  //printf("I/O Duration: %s \n",process_data);
   totalNumProc++;
   list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration);
 }
@@ -215,7 +216,7 @@ fclose(file);
    *  It outputs data for a state transition each time a process changes states.
    */
 int outputData(const char *fileName, int time, int pid, const char *oldState, const char * newState){
-    FILE *file = fopen(fileName,"a+");
+    file = fopen(fileName,"a+");
     if(file == NULL){
       printf("File Exception Error.");
       return 0;
@@ -281,15 +282,16 @@ void checkProcessArrival(){
  * This function runs the simulation for handling the processes and sending to different states, such as,
  * RUNNING, READY, WAITING and TERMINATED.
  */
- void roundrobin(){
-   printf("\nProcess State Sequence: \nTIME PID OLDSTATE NEWSTATE\n");
+ void roundrobin(int i){
+   printf("Round Robin Simulation # %i  \nState Sequence: \nTIME PID OLDSTATE NEWSTATE\n", i+1);
    //process index in the array
    int processRunning=false; //boolean value if a process is running
    const char* tempOldState; //temp variable used to keep track of processes old states
 
-   //ensure that the output file is clear before appending data to it
-   FILE *clearFile = fopen("output.txt","w");
-   fclose(clearFile);
+   file = fopen("outputRR.txt","a+");
+   fprintf(file,"Round Robin Scheduler Simulation # %i  \nState Sequence: \nTIME PID OLDSTATE NEWSTATE\n", i+1);
+   fclose(file);
+
    initIOProcesses(); //initialize the array of processes in IO (waiting state)
    selectionSort(list_of_processes);
    while(1){
@@ -319,7 +321,7 @@ void checkProcessArrival(){
            tempOldState = getState(currentProcess->state);
            currentProcess->state = PROCESS_RUNNING;
            processRunning = true;
-           outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+           outputData("outputRR.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
            printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
            tickStart = tickCount; //tick count the current process begins
          }
@@ -353,7 +355,7 @@ void checkProcessArrival(){
             burstRemaining = QUANTUM;
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
-            outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+            outputData("outputRR.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             processRunning = false;
             //calculate metrics
@@ -373,7 +375,7 @@ void checkProcessArrival(){
            if(currentProcess->totalCPUTime==0){ //if a process has finished executing
              const char* tempOldState = getState(currentProcess->state);
              currentProcess->state = PROCESS_SUSPENDED;
-             outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+             outputData("outputRR.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
              printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
              processRunning = false;
              //calculate metrics
@@ -389,7 +391,7 @@ void checkProcessArrival(){
              if(currentProcess->ioFrequencyRemaining >0){ //case where process has executed max quantum time but not terminated or request IO yet
                tempOldState = getState(currentProcess->state);
                currentProcess->state = PROCESS_READY;
-               outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+               outputData("outputRR.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
                printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
                enqueue(&readyQueue, currentProcess);
                currentProcess = NULL;
@@ -419,7 +421,7 @@ void checkProcessArrival(){
          processRunning = false;
          addIOProcess(currentProcess); //add the process to the array of IO
          //send data (RUNNING => WAITING)
-         outputData("output.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+         outputData("outputRR.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
          printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
        }
      }
@@ -488,7 +490,7 @@ int incrementIOProcesses(){
         processIORR *p = ioProcesses[i];
         const char* tempOldState = getState(p->process->state);
         p->process->state= PROCESS_READY;
-        outputData("output.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
+        outputData("outputRR.txt",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         printf("%d %d %s %s \n",tickCount, p->process->pid,tempOldState, getState(p->process->state));
         p->process->ioFrequencyRemaining = p->process->ioFrequency; //reset amount until IO runs again
         enqueue(&readyQueue, p->process); //IO has complete add process to ready queue
@@ -573,13 +575,23 @@ float calculateAverageTurnAroundTime(){
 }
 
 
-void calculateMetrics(){
+void calculateMetrics(int i){
   printf("--------------------------------------------\n");
-  printf("METRIC CALCULATIONS\n");
+  printf("METRIC CALCULATIONS SIMULATION: %i\n", i+1);
   printf("Throughput: %f\n",calculateThroughput());
   printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
   printf("Average Wait Time: %f\n",calculateAverageWaitTime());
   printf("--------------------------------------------\n");
+}
+
+void resetVariables(){
+  tickCount = 0;
+  totalNumProc = 0; //total number of processes
+  numProcSuspended = 0; //increment each time a process is SUSPENDED
+  memset(list_of_processes,0,sizeof(list_of_processes));
+  memset(list_of_procMetrics, 0, sizeof(list_of_procMetrics)); //reset list_of_procMetrics
+  //index number assigned to each process to access specific process metrics
+  metricsIndex = 0;
 }
 
 /*
@@ -588,12 +600,19 @@ void calculateMetrics(){
 */
 int main()
 {
-  //init list of processes
-  init_list_of_processes();
-  //read input file
-  readFile("InputFiles/roundRobinIO.txt");
-  //readFile("roundRobin.txt");
-  //run Round Robin simulation
-  roundrobin();
-  calculateMetrics();
+  //clear file before execution
+  FILE *clearFile = fopen("outputRR.txt","w");
+  fclose(clearFile);
+  for(int i=0;i<10;i++){
+    //init list of processes
+    init_list_of_processes();
+    //read input file
+    char fileName[22];
+    sprintf(fileName,"InputFiles/input%d.txt",i);
+    readFile(fileName);
+    //run Round Robin simulation
+    roundrobin(i);
+    calculateMetrics(i);
+    resetVariables();
+  }
 }
