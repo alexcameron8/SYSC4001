@@ -15,8 +15,8 @@ enum process_state {
   PROCESS_UNDEFINED
 };
 
-/**First Come First Server Scheduler*/
 
+/**First Come First Server Scheduler*/
 /** Structure that holds information for each task */
 typedef struct process
 {
@@ -34,6 +34,11 @@ typedef struct process
   enum process_state state;
   //index in the array to access this processes data/metrics
   int processData;
+  //The following are only used for memory management =>
+  // amount of memory required to execute the process
+  int memoryRequired;
+  // slot ID of allocated memory slot
+  int memorySlotAllocated;
 } process;
 
 /**Structure that holds info for a process and a duration which will be changed each tick*/
@@ -149,8 +154,15 @@ typedef struct processMetrics
   //time between 2 IO Operations
   int responseTime;
   //time when process execution is released
-  int totalCPUTime; 
+  int totalCPUTime;
   int finishTime;
   int arrivalTime;
   int timeInIO;
 } processMetrics;
+
+typedef struct memorySlot
+{
+  int slotID;
+  int slotSize;
+  bool occupied;
+} memorySlot;
