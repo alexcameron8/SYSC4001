@@ -268,6 +268,7 @@ void fcfs(int i){
       while(readyQueue.head == NULL){
         tickCount++;
         incrementIOProcesses();
+        checkProcessArrival();
       }
     }else{
       while(!processArrived){
@@ -438,13 +439,13 @@ float calculateAverageWaitTime(){
   for(int i=0;i<=metricsIndex;i++){
     totalWaitTime = totalWaitTime + list_of_procMetrics[i].waitingTime;
   }
-  return totalWaitTime / (metricsIndex + 1);
+  return totalWaitTime / (metricsIndex);
 }
 /**
 * Throughput: num of processes/ total simulation time
 */
 float calculateThroughput(){
-  return (metricsIndex+1)/(double)tickCount;
+  return (metricsIndex)/(double)tickCount;
 }
 /**
 * Turnaroundtime: for each process, turnaroundTime = process completion time - arrival time
@@ -460,7 +461,7 @@ float calculateAverageTurnAroundTime(){
   for(int i=0;i<=metricsIndex;i++){
     totalTurnAroundTime = totalTurnAroundTime + list_of_procMetrics[i].turnaroundTime;
   }
-  return totalTurnAroundTime / (metricsIndex + 1);
+  return totalTurnAroundTime / (metricsIndex);
 }
 
 
