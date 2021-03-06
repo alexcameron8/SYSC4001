@@ -331,16 +331,11 @@ void fcfsMem(int i){
             enqueue(&readyQueue,currentProcess);
             allocationError=true;
             programEnd = false;
-            while(allocationError){
+            while(allocationError){ //if memory cannot be allocated
               if(processArrived == true){ //case where the only process that has arrived is in IO
                 while(readyQueue.head == NULL){//while there are no processes in queue
                   tickCount++;
                   incrementIOProcesses();
-                  checkProcessArrival();
-                }
-              }else{ //no processes have arrived
-                while(!processArrived){
-                  tickCount++;
                   checkProcessArrival();
                 }
               }
@@ -467,7 +462,6 @@ int allocateMemory(){
     printf("Process %i could never be allocated to main memory, suspending process.\n", currentProcess->pid);
     currentProcess = NULL;
     numProcSuspended++; //counter to track how many processes have finished executing
-    printf("%i,%i\n", totalNumProc,numProcSuspended);
     if(totalNumProc == numProcSuspended){ //all processes complete, end simulation
       programEnd = true;
     }
