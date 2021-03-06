@@ -11,6 +11,7 @@
 #define SLOT2 150
 #define SLOT3 100
 
+
 //tick counter
 int tickCount = 0;
 //current running process
@@ -47,6 +48,8 @@ int numOfAllocations = 0;
 int memAvailable = SLOT0 + SLOT1 + SLOT2 + SLOT3;
 //pointer to file
 FILE *file;
+int allocationError = false;
+int programEnd = false;
 
 //func prototypes
 void setIOWaitTime(int ioFrequency);
@@ -60,7 +63,9 @@ void deallocateMemory(process* p);
 void checkFreeMemory();
 void calculateTurnAroundTime();
 float calculateAverageWaitTime();
-
+int getGreatestUnavailableSlot();
+int checkReadyQueueMem();
+int checkProcIO();
 /*
  * Initialize all indexes of the list of processes (PCB) to be undefined.
  */
@@ -288,30 +293,32 @@ void fcfsMem(int i){
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
   arrivalSort(list_of_processes);
   while(1){
-    if(totalNumProc == numProcSuspended){ //all processes complete, end simulation
-      break;
-    }
-    if(tickCount==0){
-      checkProcessArrival();
-    }
+      if(totalNumProc == numProcSuspended ){ //all processes complete, end simulation
+        break;
+      }
 
-    if(processArrived == true){ //case where the only process that has arrived is in IO
-      while(readyQueue.head == NULL){//while there are no processes in queue
-        tickCount++;
-        incrementIOProcesses();
+      if(tickCount==0){
         checkProcessArrival();
       }
-    }else{ //no processes have arrived
-      while(!processArrived){
-        tickCount++;
-        checkProcessArrival();
+
+      if(processArrived == true){ //case where the only process that has arrived is in IO
+        while(readyQueue.head == NULL){//while there are no processes in queue
+          tickCount++;
+          incrementIOProcesses();
+          checkProcessArrival();
+        }
+      }else{ //no processes have arrived
+        while(!processArrived){
+          tickCount++;
+          checkProcessArrival();
+        }
       }
-    }
 
       if(!processRunning){ //no process is currently running then assign a process to run
         if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
             currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
             if(allocateMemory()){ //if a process can be allocated =>
+            allocationError=false;
             //output data: READY => RUNNING
             tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_RUNNING;
@@ -322,10 +329,51 @@ void fcfsMem(int i){
           }else{ //memory could not be allocated => move to back of readyQueue
             currentProcess = dequeue(&readyQueue);
             enqueue(&readyQueue,currentProcess);
-            currentProcess=NULL;
+            allocationError=true;
+            programEnd = false;
+            while(allocationError){
+              if(processArrived == true){ //case where the only process that has arrived is in IO
+                while(readyQueue.head == NULL){//while there are no processes in queue
+                  tickCount++;
+                  incrementIOProcesses();
+                  checkProcessArrival();
+                }
+              }else{ //no processes have arrived
+                while(!processArrived){
+                  tickCount++;
+                  checkProcessArrival();
+                }
+              }
+
+              if(!processRunning){ //no process is currently running then assign a process to run
+                if(readyQueue.head!=NULL){ //if ready queue has a process in ready state waiting to run
+                    currentProcess = dequeue(&readyQueue); //remove first process from readyqueue
+                    if(allocateMemory()){ //if a process can be allocated =>
+                    allocationError=false;
+                    //output data: READY => RUNNING
+                    tempOldState = getState(currentProcess->state);
+                    currentProcess->state = PROCESS_RUNNING;
+                    processRunning = true;
+                    outputData("outputMM.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+                    printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
+                    tickStart = tickCount; //tick count the current process begins
+                  }else{ //memory could not be allocated => move to back of readyQueue
+                    if(programEnd){ //all processes complete, end simulation
+                      break;
+                    }
+                    currentProcess = dequeue(&readyQueue);
+                    enqueue(&readyQueue,currentProcess);
+                    allocationError=true;
+                  }
+                }
+            }
+          }
+          if(programEnd){
+            break;
           }
         }
       }
+    }
 
       if(currentProcess->ioFrequency == 0){ //if there is no ioFrequency then perform execution until process completes execution
         while(currentProcess->totalCPUTime!=0){
@@ -368,7 +416,8 @@ void fcfsMem(int i){
           }
         }
       }
-        if(currentProcess !=NULL){ //if process requires IO
+
+        if(currentProcess !=NULL ){ //if process requires IO
         //send process to IO
         tempOldState = getState(currentProcess->state);
         currentProcess->state = PROCESS_WAITING;
@@ -415,15 +464,17 @@ int allocateMemory(){
     //calculate metrics
     list_of_procMetrics[currentProcess->processData].finishTime = tickCount;
     calculateTurnAroundTime();
-    printf("Process %i could can never be allocated to main memory, suspending process.\n", currentProcess->pid);
+    printf("Process %i could never be allocated to main memory, suspending process.\n", currentProcess->pid);
     currentProcess = NULL;
     numProcSuspended++; //counter to track how many processes have finished executing
+    printf("%i,%i\n", totalNumProc,numProcSuspended);
+    if(totalNumProc == numProcSuspended){ //all processes complete, end simulation
+      programEnd = true;
+    }
     return false;
   }
   printf("Process %i could not be allocated to memory\n", currentProcess->pid);
   return false;
-
-
 }
 
 /**
@@ -597,6 +648,8 @@ void resetVariables(){
   totalMemAllocated = 0;
   numOfAllocations = 0;
   memAvailable = SLOT0 + SLOT1 + SLOT2 + SLOT3;
+  allocationError = false;
+  programEnd = false;
 }
 
 
