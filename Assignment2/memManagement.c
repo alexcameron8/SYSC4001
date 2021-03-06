@@ -53,8 +53,8 @@ int incrementIOProcesses();
 void printIOProcs();
 void checkArrivalTime();
 int allocateMemory();
-void deallocateMemory();
-void checkFreeMemeory();
+void deallocateMemory(process* p);
+void checkFreeMemory();
 void calculateTurnAroundTime();
 float calculateAverageWaitTime();
 
@@ -79,6 +79,10 @@ void init_list_of_memorySlots(){
   list_of_memorySlots[2].slotSize = SLOT2; //150
   list_of_memorySlots[3].slotSize = SLOT3; //100
 
+  list_of_memorySlots[0].slotID = 0; //500
+  list_of_memorySlots[1].slotID = 1; //250
+  list_of_memorySlots[2].slotID = 2; //150
+  list_of_memorySlots[3].slotID = 3; //100
   for(int i = 0; i < 4; i++){
     list_of_memorySlots[i].occupied = false;
   }
@@ -173,6 +177,8 @@ void getProcessData(char *processData){
   int ioFrequency = atoi(process_data);
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
+  process_data = strtok(NULL,delim);
+  int priority = atoi(process_data); //not used for FCFS
   process_data = strtok(NULL,delim);
   int memoryRequired = atoi(process_data);
 
@@ -346,7 +352,7 @@ void fcfs(int i){
 
           //Move to its own function
           currentProcess->state = PROCESS_SUSPENDED;
-          deallocateMemory();
+          deallocateMemory(currentProcess);
 
           outputData("outputMM.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
           printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
@@ -365,7 +371,7 @@ void fcfs(int i){
           if(currentProcess->totalCPUTime==0){ //if a process has finished executing
             const char* tempOldState = getState(currentProcess->state);
             currentProcess->state = PROCESS_SUSPENDED;
-            deallocateMemory();
+            deallocateMemory(currentProcess);
 
             outputData("outputMM.txt",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
             printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
@@ -395,7 +401,6 @@ void fcfs(int i){
 * Function which takes a process as an argument and attempts to allocate memory if a partition is available
 */
 int allocateMemory(){
-  //int tempMemAvailable = SLOT0 + SLOT1 + SLOT2 + SLOT3;
   int memAllocated;
   if(currentProcess->memoryRequired < SLOT0){ //ensure that process is less than max partition slot
     for(int i = 0; i < 4; i++){
@@ -404,20 +409,19 @@ int allocateMemory(){
           currentProcess->memorySlotAllocated = list_of_memorySlots[i].slotID;
           list_of_memorySlots[i].occupied = true;
           memAllocated = list_of_memorySlots[i].slotSize;
-          printf("%iK of memory has been allocated.\n", list_of_memorySlots[i].slotSize);
+          printf("\t---Memory Allocation Metrics---\n");
+          printf("\tMemory Allocated: %iK PID: %i \n", list_of_memorySlots[i].slotSize,currentProcess->pid);
           //printf("Process %i has been allocated %i memory\n", currentProcess->pid, list_of_memorySlots[i].slotSize); testing
           totalMemAllocated += memAllocated;
           numOfAllocations++;
-          printf("%ik of memory has been allocated thus far\n", totalMemAllocated);
-          checkFreeMemeory();
+          printf("\tTotal Memory Allocated: %ik\n", totalMemAllocated);
+          checkFreeMemory();
           memAvailable -= memAllocated;
-          //tempMemAvailable -= memAllocated;
-          //printf("%ik of memory is still available.\n", tempMemAvailable);
-          printf("%ik of memory is still available.\n", memAvailable);
+          printf("\tAvailable Memory:%ik\n", memAvailable);
+          printf("\t-------------------------------\n");
           return true;
         }
       }
-
     }
   }else{ //process will never be able to run because of memory requirements
     const char* tempOldState = getState(currentProcess->state);
@@ -440,25 +444,10 @@ int allocateMemory(){
 }
 
 
-// void deallocateMemory(process *p){
-//   int memDeallocated;
-//   int tempSlotID = p->memorySlotAllocated;
-//   p->memorySlotAllocated = 0;
-//
-//   for(int i = 0; i < 4; i++){
-//     if(list_of_memorySlots[i].slotID == tempSlotID){
-//       list_of_memorySlots[i].occupied = false;
-//       memDeallocated = list_of_memorySlots[i].slotSize;
-//     }
-//   }
-//   memAvailable += memDeallocated;
-// }
-
-
-void deallocateMemory(){
+void deallocateMemory(process *p){
   int memDeallocated;
-  int tempSlotID = currentProcess->memorySlotAllocated;
-  currentProcess->memorySlotAllocated = 0;
+  int tempSlotID = p->memorySlotAllocated;
+  p->memorySlotAllocated = 0;
 
   for(int i = 0; i < 4; i++){
     if(list_of_memorySlots[i].slotID == tempSlotID){
@@ -470,14 +459,15 @@ void deallocateMemory(){
 }
 
 
-void checkFreeMemeory(){
-  printf("Slots: ");
+
+void checkFreeMemory(){
+  printf("\tFree Slots: ");
   for(int i=0; i < 4; i++){
     if(list_of_memorySlots[i].occupied == false){
-      printf("%i, ", list_of_memorySlots[i].slotSize);
+      printf("%i ", list_of_memorySlots[i].slotSize);
     }
   }
-  printf("are free.\n");
+  printf("\n");
 }
 
   /*
@@ -616,9 +606,11 @@ void calculateMetrics(int i){
   printf("--------------------------------------------\n");
   printf("METRIC CALCULATIONS SIMULATION: %i\n", i+1);
   printf("Throughput: %f\n",calculateThroughput());
-  printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
-  printf("Average Wait Time: %f\n",calculateAverageWaitTime());
-  printf("Average Memory Allocated: %f\n", calculateMemory());
+  printf("Average Turnaround Time: %f ticks\n",calculateAverageTurnAroundTime());
+  printf("Average Wait Time: %f ticks\n",calculateAverageWaitTime());
+  printf("Total Memory Allocated: %ik\n", totalMemAllocated);
+  printf("Number of Times Memory Allocated: %i\n", numOfAllocations);
+  printf("Average Memory Allocated: %fk\n", calculateMemory());
   printf("--------------------------------------------\n");
 }
 

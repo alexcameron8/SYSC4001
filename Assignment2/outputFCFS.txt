@@ -586,3 +586,27 @@ TIME PID OLDSTATE NEWSTATE PRIORITY
 Priority Scheduler Simulation # 10  
 State Sequence: 
 TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 1  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 2  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 3  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 4  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 5  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 6  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 7  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY
+Priority Scheduler Simulation # 8  
+State Sequence: 
+TIME PID OLDSTATE NEWSTATE PRIORITY

@@ -653,8 +653,8 @@ void calculateMetrics(int i){
   printf("--------------------------------------------\n");
   printf("METRIC CALCULATIONS SIMULATION: %i\n", i+1);
   printf("Throughput: %f\n",calculateThroughput());
-  printf("Average Turnaround Time: %f\n",calculateAverageTurnAroundTime());
-  printf("Average Wait Time: %f\n",calculateAverageWaitTime());
+  printf("Average Turnaround Time: %f ticks\n",calculateAverageTurnAroundTime());
+  printf("Average Wait Time: %f ticks\n",calculateAverageWaitTime());
   printf("--------------------------------------------\n");
 }
 
