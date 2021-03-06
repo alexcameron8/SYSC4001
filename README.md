@@ -8,18 +8,31 @@
 
 ## Running batch files //TO-DO
 
-The batch files are individually linked to the two input files (input1.txt, input2.txt), running **test1.bat** will execute the program with **input1.txt**, and running **test2.bat** will execute the program with **input2.txt**. 
+The batch files are individually linked to the different scheduler programs. Running a bat file will run the respective scheduler 10 time with 10 different input files. The output can be seen in the respective output file for that scheduler. 
 
-Once the files are executed, the output will be shown in the terminal, and can also be seen in the **output.txt** file found in the 'Assignment1_Part2' directory. (Note: the output in **output.txt** will be overwritten any time a .bat or .exe is run)
+Running **fcfsScheduler.bat** will run the first come, first serve scheduler. 
+Running **roundRobinScheduler.bat** will run the Round Robin Scheduler. 
+Running the **priorityScheduler.bat** will run the multi-queue priority scheduler. 
+Running the **fcfsMemoryManagement.bat** will run the first come, first serve scheduler with memory management implemented. 
 
-## Running the program with custom input files //TO-DO
+The output for the first come, first serve scheduler can be found in the **outputFCFS.txt**
+The output for the round robin scheduler can be found in the **outputRR.txt**
+The output for the multi-queue priority scheduler can be found in **outputP.txt**
+The output for the first come, first serve scheduler can be found in the **outputMM.txt**
 
-Running the program with custom input files can be done in one of two ways:
+(Note: the output in the output files will be overwritten any time a .bat or .exe is run)
 
--   Put the custom input file (in .txt format) in the 'Assignment1_Part2' directory, then from the command prompt, cd into the 'Assignment1_Part2' folder and run the command **cmd /k mainCMD.exe [custom file name].txt** without the brackets. The output should appear in the command prompt as well as in the **output.txt** file found in the 'Assignment1_Part2' directory.
--   Paste the contents of the custom input file into one of the two **input.txt** files and run the corresponding batch file.
+**PLEASE NOTE:** The analytics (throughput, turnaround time, wait time, memory data) for the test cases can only be seen in the **command prompt output**. The output .txt files will only contain the execution data. 
 
-## Running the program in an optimized IDE //TO-DO
+
+## Running the program with custom input files
+
+-   Paste the contents of the custom input file into one of the two 10 inputX.txt files and run the appropriate batch file.
+
+## Running the program in an optimized IDE 
+
+- Open the project in any optimized IDE
+- Compile and run the .c file corresponding to the scheduler you wish to run (All programs are already set to run 10 times, with the 10 different input files).
 
 
 ## About Part 2
@@ -38,6 +51,6 @@ There are several sets of calculations performed for part 2 b) consisting of ave
 - **Source code:** 
 - **Program executables (exe):** 
 - **Input/Output files:** input0.txt, input1.txt, input2.txt, input3.txt, input4.txt, input5.txt, input6.txt, input6.txt, input7.txt, input8.txt, input9.txt, outputFCFS.txt, outputRR.txt, outputP.txt, outputMM.txt, 
-- **Batch script files:** 
+- **Batch script files:** fcfsScheduler.bat, roundRobinScheduler.bat, priorityScheduler.bat, fcfsMemoryManagementScheduler.bat 
 - **Part 1 question answers with Part 2 b) &c) Analysis**
 - **README files**
