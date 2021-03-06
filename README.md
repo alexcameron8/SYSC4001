@@ -27,7 +27,7 @@ The output for the first come, first serve scheduler can be found in the **outpu
 
 ## Running the program with custom input files
 
--   Paste the contents of the custom input file into one of the two 10 inputX.txt files and run the appropriate batch file.
+-   Paste the contents of the custom input file into one of the two 10 inputX.txt files located in the InputFiles folder and run the appropriate batch file.
 
 ## Running the program in an optimized IDE 
 
@@ -48,8 +48,8 @@ There are several sets of calculations performed for part 2 b) consisting of ave
 
 
 ## Final deliverables
-- **Source code:** 
-- **Program executables (exe):** 
+- **Source code:** assignment2.h, fcfsScheduler.c, memManagement.c, priorityScheduler.c, roundRobinScheduler.c
+- **Program executables (exe):** fcfsScheduler.exe, roundRobinScheduler.exe, priorityScheduler.exe, fcfsMemoryManagementScheduler.exe
 - **Input/Output files:** input0.txt, input1.txt, input2.txt, input3.txt, input4.txt, input5.txt, input6.txt, input6.txt, input7.txt, input8.txt, input9.txt, outputFCFS.txt, outputRR.txt, outputP.txt, outputMM.txt, 
 - **Batch script files:** fcfsScheduler.bat, roundRobinScheduler.bat, priorityScheduler.bat, fcfsMemoryManagementScheduler.bat 
 - **Part 1 question answers with Part 2 b) &c) Analysis**
