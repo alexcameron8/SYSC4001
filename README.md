@@ -47,7 +47,7 @@ There are several sets of calculations performed for part 2 b) consisting of ave
 - For Part 2 c), An assumption was made that if a process’ memory is too large for the biggest partition then the process is suspended and removed from readyQueue
 
 
-## Final deliverables //TO-DO
+## Final deliverables
 - **Source code:** 
 - **Program executables (exe):** 
 - **Input/Output files:** input0.txt, input1.txt, input2.txt, input3.txt, input4.txt, input5.txt, input6.txt, input6.txt, input7.txt, input8.txt, input9.txt, outputFCFS.txt, outputRR.txt, outputP.txt, outputMM.txt, 
