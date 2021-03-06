@@ -6,7 +6,7 @@
 - Marko Majkic, 101109409  
 - Alex Cameron, 101114698
 
-## Running batch files //TO-DO
+## Running batch files
 
 The batch files are individually linked to the different scheduler programs. Running a bat file will run the respective scheduler 10 time with 10 different input files. The output can be seen in the respective output file for that scheduler. 
 
