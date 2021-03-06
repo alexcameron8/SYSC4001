@@ -39,7 +39,6 @@ int initIOProcesses();
 int addIOProcess(process *ioProc);
 void removeIOProcess(int i);
 int incrementIOProcesses();
-void printIOProcs();
 void checkArrivalTime();
 void calculateTurnAroundTime();
 float calculateAverageWaitTime();
@@ -73,19 +72,6 @@ void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int i
 }
 
 
-/*
- * function used for TESTING purposes to view processes in the IO data structure
- */
-void printIOProcsArrival(){
-int i;
-printf("------------TEST------------\n");
-for(i=0; i<MEMORY;i++){
-  if(list_of_processes[i].state!=PROCESS_UNDEFINED){
-    printf("pid: %i , arrival: %i at position %i\n", list_of_processes[i].pid, list_of_processes[i].arrivalTime, i);
-  }
-}
-printf("------------TEST------------\n");
-}
 /*
 * Helper function to swap position of 2 int
 */
@@ -264,13 +250,13 @@ void fcfs(int i){
       checkProcessArrival();
     }
 
-    if(processArrived == true){
-      while(readyQueue.head == NULL){
+    if(processArrived == true){ //case where the only process that has arrived is in IO
+      while(readyQueue.head == NULL){ //while there are no processes in queue
         tickCount++;
         incrementIOProcesses();
         checkProcessArrival();
       }
-    }else{
+    }else{ //no processes have arrived
       while(!processArrived){
         tickCount++;
         checkProcessArrival();
@@ -340,18 +326,7 @@ void fcfs(int i){
       }
     }
   }
-  /*
-   * function used for TESTING purposes to view processes in the IO data structure
-   */
-void printIOProcs(){
-  int i;
-  printf("test\n");
-  for(i=0; i<MEMORY;i++){
-    if(ioProcesses[i]->process!=NULL){
-      printf("%i\n", ioProcesses[i]->process->pid);
-    }
-  }
-}
+
 /*
  * Initializes the array of processes currently in IO waiting state
  */
@@ -473,20 +448,20 @@ void calculateMetrics(int i){
   printf("Average Wait Time: %f ticks\n",calculateAverageWaitTime());
   printf("--------------------------------------------\n");
 }
-
+/*
+* Function that resets all variables for the next simulation
+*/
 void resetVariables(){
   tickCount = 0;
-  totalNumProc = 0; //total number of processes
-  numProcSuspended = 0; //increment each time a process is SUSPENDED
+  totalNumProc = 0;
+  numProcSuspended = 0;
   memset(list_of_processes,0,sizeof(list_of_processes));
   memset(list_of_procMetrics, 0, sizeof(list_of_procMetrics)); //reset list_of_procMetrics
-  //index number assigned to each process to access specific process metrics
   metricsIndex = 0;
 }
 
 /*
-* FCFS part c test file : "fcfsPartC.txt"
-* FCFS part d test file : "fcfsPartD.txt"
+* FCFS scheduler which runs 10 simulations
 */
 int main()
 {

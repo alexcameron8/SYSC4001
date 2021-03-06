@@ -85,20 +85,6 @@ void list_add(processP arr[], int pid, int arrivalTime, int totalCPUTime, int io
   printf("There is no more allocated memory.");
 }
 
-
-/*
- * function used for TESTING purposes to view processes in the IO data structure
- */
-void printIOProcsArrival(){
-int i;
-printf("------------TEST------------\n");
-for(i=0; i<MEMORY;i++){
-  if(list_of_processes[i].state!=PROCESS_UNDEFINED){
-    printf("pid: %i , arrival: %i at position %i, priority level: %i \n", list_of_processes[i].pid, list_of_processes[i].arrivalTime, i, list_of_processes[i].priority);
-  }
-}
-printf("------------TEST------------\n");
-}
 /*
 * Helper function to swap position of 2 int
 */
@@ -112,7 +98,7 @@ void swap(processP* xp, processP* yp)
  * Function which sorts the processes read by the input file from arrival times
  * smallest to greatest for each process
 */
-void selectionSort(struct processP list_of_processes[MEMORY])
+void arrivalSort(struct processP list_of_processes[MEMORY])
 {
     int i, j, min_idx;
     int n = 0;
@@ -160,7 +146,6 @@ void prioritySort(struct processP list_of_processes[MEMORY])
     }
 }
 
-
 /*
 * Function to iterate through ready queue and find process with highest priority.
 * (lowest value).
@@ -185,7 +170,6 @@ processP* smallestPriorProcess(PQueue q)
     }
     return min;
 }
-
 
 /*
  * This function parses a line from the input file and splits the information
@@ -327,8 +311,6 @@ void setRemainingBurst(int priority){
     burstRemaining = QUANTUM_MED;
   }else if(priority>0){ //priority level is 0/1 then set quantum for new process to high priority quantum
     burstRemaining = QUANTUM_HIGH;
-  }else{
-    printf("wtf are u doing\n"); //test
   }
 }
 
@@ -356,7 +338,6 @@ void checkProcessArrival(){
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
       processP *temp = &list_of_processes[i];
-      //printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing
       addToQueue(temp);
       processArrived = true;
       //initialize process metrics
@@ -382,7 +363,7 @@ void priorityScheduler(int i){
   const char* tempOldState; //temp variable used to keep track of processes old states
 
   initIOProcesses(); //initialize the array of processes in IO (waiting state)
-  selectionSort(list_of_processes);
+  arrivalSort(list_of_processes);
   file = fopen("outputFCFS.txt","a+");
   fprintf(file,"Priority Scheduler Simulation # %i  \nState Sequence: \nTIME PID OLDSTATE NEWSTATE PRIORITY\n", i+1);
   fclose(file);
@@ -399,7 +380,7 @@ void priorityScheduler(int i){
         incrementIOProcesses();
         checkProcessArrival();
       }
-    }else{//no processes have arrived
+    }else{ //no processes have arrived
       while(!processArrived){
         tickCount++;
         checkProcessArrival();
@@ -510,8 +491,7 @@ void priorityScheduler(int i){
           }
         }
       }
-
-        if(currentProcess !=NULL && currentProcess->ioFrequencyRemaining == 0){
+        if(currentProcess !=NULL && currentProcess->ioFrequencyRemaining == 0){ //if process requires IO
           //send process to IO
           tempOldState = getState(currentProcess->state);
           currentProcess->state = PROCESS_WAITING;
@@ -523,17 +503,7 @@ void priorityScheduler(int i){
       }
     }
   }
-  /*
-   * function used for TESTING purposes to view processes in the IO data structure
-   */
-void printIOProcs(){
-  int i;
-  for(i=0; i<MEMORY;i++){
-    if(ioProcesses[i]->process!=NULL){
-      printf("%i\n", ioProcesses[i]->process->pid);
-    }
-  }
-}
+
 /*
  * Initializes the array of processes currently in IO waiting state
  */
@@ -670,8 +640,7 @@ void resetVariables(){
 
 
 /*
-* Priority Queue part c test file : "priorityInput.txt"
-* FCFS part d test file : "priorityInputIO.txt"
+* Priority Queue scheduler which runs 10 simulations
 */
 int main()
 {

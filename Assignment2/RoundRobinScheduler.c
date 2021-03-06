@@ -36,15 +36,10 @@ int metricsIndex = 0;
 FILE *file;
 
 //func prototypes
-void setIOWaitTime(int ioFrequency);
 int initIOProcesses();
 int addIOProcess(processRR *ioProc);
 void removeIOProcess(int i);
 int incrementIOProcesses();
-void printIOProcs();
-void checkArrivalTime();
-void checkCurProcBurstTime();
-void printQueue();
 void incrementProcessWaitTime();
 void calculateTurnAroundTime();
 
@@ -77,20 +72,6 @@ void list_add(int pid, int arrivalTime, int totalCPUTime, int ioFrequency, int i
   printf("There is no more allocated memory.");
 }
 
-
-/*
- * function used for TESTING purposes to view processes in the IO data structure
- */
-void printIOProcsArrival(){
-int i;
-printf("------------TEST------------\n");
-for(i=0; i<MEMORY;i++){
-  if(list_of_processes[i].state!=PROCESS_UNDEFINED){
-    printf("pid: %i , arrival: %i at position %i\n", list_of_processes[i].pid, list_of_processes[i].arrivalTime, i);
-  }
-}
-printf("------------TEST------------\n");
-}
 /*
 * Helper function to swap position of 2 int
 */
@@ -104,7 +85,7 @@ void swap(processRR* xp, processRR* yp)
  * Function which sorts the processes read by the input file from arrival times
  * smallest to greatest for each process
 */
-void selectionSort(struct processRR list_of_processes[MEMORY])
+void arrivalSort(struct processRR list_of_processes[MEMORY])
 {
     int i, j, min_idx;
     int n = 0;
@@ -160,19 +141,14 @@ void getProcessData(char *processData){
   char *process_data;
   process_data = strtok(processData,delim);
   int pid = atoi(process_data);
-  //printf("pid: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int arrivalTime = atoi(process_data);
-  //printf("Arrival Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int totalCPUTime = atoi(process_data);
-  //printf("Total CPU Time: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioFrequency = atoi(process_data);
-  //printf("I/O Frequency: %s \n",process_data);
   process_data = strtok(NULL,delim);
   int ioDuration = atoi(process_data);
-  //printf("I/O Duration: %s \n",process_data);
   totalNumProc++;
   list_add(pid, arrivalTime, totalCPUTime, ioFrequency, ioDuration);
 }
@@ -263,7 +239,6 @@ void checkProcessArrival(){
   for(int i=0; i<MEMORY;i++){
     if(list_of_processes[i].state!=PROCESS_UNDEFINED && list_of_processes[i].arrivalTime == tickCount){
       processRR *temp = &list_of_processes[i];
-      //printf("Added to ReadyQueue: %i @ tickCount: %i\n", temp->pid, tickCount); testing purposes
       enqueue(&readyQueue,temp);
       processArrived = true;
       //initialize process metrics
@@ -292,7 +267,7 @@ void checkProcessArrival(){
    fclose(file);
 
    initIOProcesses(); //initialize the array of processes in IO (waiting state)
-   selectionSort(list_of_processes);
+   arrivalSort(list_of_processes);
    while(1){
      if(totalNumProc == numProcSuspended){ //all processes complete, end simulation
        break;
@@ -426,17 +401,7 @@ void checkProcessArrival(){
        }
      }
    }
-  /*
-   * function used for TESTING purposes to view processes in the IO data structure
-   */
-void printIOProcs(){
-  int i;
-  for(i=0; i<MEMORY;i++){
-    if(ioProcesses[i]->process!=NULL){
-      printf("%i\n", ioProcesses[i]->process->pid);
-    }
-  }
-}
+
 /*
  * Initializes the array of processes currently in IO waiting state
  */
@@ -501,36 +466,6 @@ int incrementIOProcesses(){
   return 0;
 }
 
-void printQueue(){
-  printf("------------TEST------------\n");
-  while(readyQueue.head->next != NULL){
-    printf("%i\n", readyQueue.head->process->pid);
-    readyQueue.head->next = readyQueue.head->next->next;
-  }
-  printf("------------TEST------------\n");
-}
-
-/**
-* Function that checks to make sure that process has not surpassed time splice /
-* quantum.
-* Note: Run after CheckCurProcTime()
-*/
-void checkCurProcBurstTime(){
-  printf("%i\n", currentProcess ==  NULL);
-  if(currentProcess !=NULL){
-    if(burstRemaining == 0 && currentProcess->totalCPUTime != 0){ //if burst time is 0 then process shall be preemted
-      const char* tempOldState = getState(currentProcess->state); //RUNNING
-      currentProcess->state = PROCESS_READY;
-      printf("%d %d %s %s \n",tickCount, currentProcess->pid,tempOldState, getState(currentProcess->state));
-      processRunning = false;
-      enqueue(&readyQueue,currentProcess); //put process back in ready queue
-      burstRemaining = QUANTUM; //reset burst remaining
-      currentProcess = NULL;
-    }else{
-      printf("PID: %i total execution time complete \n", currentProcess->pid);
-    }
-  }
-}
 /** Metric calculations */
 /**
 * Process wait time: Wait time = turnaroundTime - burst time
@@ -594,8 +529,7 @@ void resetVariables(){
 }
 
 /*
-* Round Robin part c test file : "roundRobin.txt"
-* Round Robin part d test file : "roundRobinIO.txt"
+* Round Robin scheduler which runs 10 test simulations
 */
 int main()
 {
