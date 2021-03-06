@@ -10,15 +10,15 @@
 
 The batch files are individually linked to the different scheduler programs. Running a bat file will run the respective scheduler 10 time with 10 different input files. The output can be seen in the respective output file for that scheduler. 
 
-Running **fcfsScheduler.bat** will run the first come, first serve scheduler. 
-Running **roundRobinScheduler.bat** will run the Round Robin Scheduler. 
-Running the **priorityScheduler.bat** will run the multi-queue priority scheduler. 
-Running the **fcfsMemoryManagement.bat** will run the first come, first serve scheduler with memory management implemented. 
+- Running **fcfsScheduler.bat** will run the first come, first serve scheduler. 
+- Running **roundRobinScheduler.bat** will run the Round Robin Scheduler. 
+- Running the **priorityScheduler.bat** will run the multi-queue priority scheduler. 
+- Running the **fcfsMemoryManagement.bat** will run the first come, first serve scheduler with memory management implemented. 
 
-The output for the first come, first serve scheduler can be found in the **outputFCFS.txt**
-The output for the round robin scheduler can be found in the **outputRR.txt**
-The output for the multi-queue priority scheduler can be found in **outputP.txt**
-The output for the first come, first serve scheduler can be found in the **outputMM.txt**
+- The output for the first come, first serve scheduler can be found in the **outputFCFS.txt**
+- The output for the round robin scheduler can be found in the **outputRR.txt**
+- The output for the multi-queue priority scheduler can be found in **outputP.txt**
+- The output for the first come, first serve scheduler can be found in the **outputMM.txt**
 
 (Note: the output in the output files will be overwritten any time a .bat or .exe is run)
 
