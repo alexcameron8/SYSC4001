@@ -1,7 +1,7 @@
 # SYSC 4001 - Assignment 2
 
 **Date:** 2020-03-05
-
+Note: Part 2 c) Does not work properly.
 **Group members:**
 - Marko Majkic, 101109409  
 - Alex Cameron, 101114698
