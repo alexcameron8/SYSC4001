@@ -1,7 +1,7 @@
 # SYSC 4001 - Assignment 2
 
 **Date:** 2020-03-05
-
+Note: Part 2 c) Does not work properly.
 **Group members:**
 - Marko Majkic, 101109409  
 - Alex Cameron, 101114698
@@ -10,15 +10,11 @@
 
 The batch files are individually linked to the different scheduler programs. Running a bat file will run the respective scheduler 10 time with 10 different input files. The output can be seen in the respective output file for that scheduler. 
 
-Running **fcfsScheduler.bat** will run the first come, first serve scheduler. 
-Running **roundRobinScheduler.bat** will run the Round Robin Scheduler. 
-Running the **priorityScheduler.bat** will run the multi-queue priority scheduler. 
-Running the **fcfsMemoryManagement.bat** will run the first come, first serve scheduler with memory management implemented. 
+- Running **fcfsScheduler.bat** will run the first come, first serve scheduler. The output for this can be found in the **outputFCFS.txt**
+- Running **roundRobinScheduler.bat** will run the Round Robin Scheduler. The output for this can be found in the **outputRR.txt**
+- Running the **priorityScheduler.bat** will run the multi-queue priority scheduler. The output for this can be found in **outputP.txt**
+- Running the **fcfsMemoryManagement.bat** will run the first come, first serve scheduler with memory management implemented. The output for this can be found in the **outputMM.txt**
 
-The output for the first come, first serve scheduler can be found in the **outputFCFS.txt**
-The output for the round robin scheduler can be found in the **outputRR.txt**
-The output for the multi-queue priority scheduler can be found in **outputP.txt**
-The output for the first come, first serve scheduler can be found in the **outputMM.txt**
 
 (Note: the output in the output files will be overwritten any time a .bat or .exe is run)
 
@@ -27,7 +23,7 @@ The output for the first come, first serve scheduler can be found in the **outpu
 
 ## Running the program with custom input files
 
--   Paste the contents of the custom input file into one of the two 10 inputX.txt files and run the appropriate batch file.
+-   Paste the contents of the custom input file into one of the two 10 inputX.txt files located in the InputFiles folder and run the appropriate batch file.
 
 ## Running the program in an optimized IDE 
 
@@ -48,8 +44,8 @@ There are several sets of calculations performed for part 2 b) consisting of ave
 
 
 ## Final deliverables
-- **Source code:** 
-- **Program executables (exe):** 
+- **Source code:** assignment2.h, fcfsScheduler.c, memManagement.c, priorityScheduler.c, roundRobinScheduler.c
+- **Program executables (exe):** fcfsScheduler.exe, roundRobinScheduler.exe, priorityScheduler.exe, fcfsMemoryManagementScheduler.exe
 - **Input/Output files:** input0.txt, input1.txt, input2.txt, input3.txt, input4.txt, input5.txt, input6.txt, input6.txt, input7.txt, input8.txt, input9.txt, outputFCFS.txt, outputRR.txt, outputP.txt, outputMM.txt, 
 - **Batch script files:** fcfsScheduler.bat, roundRobinScheduler.bat, priorityScheduler.bat, fcfsMemoryManagementScheduler.bat 
 - **Part 1 question answers with Part 2 b) &c) Analysis**
