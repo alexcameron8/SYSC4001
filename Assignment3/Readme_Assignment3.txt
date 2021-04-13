@@ -7,7 +7,7 @@ Alex Cameron, 101114698
 ----------------------
 Assignment Description
 ----------------------
-The goal of this assignment is to familiarzie ourselves with concurrency, IPC, sempahores, shared memeory, and linux system calls. We are tasked with designing a system to simulate an automatic teller machine.
+The goal of this assignment is to familiarize ourselves with concurrency, IPC, sempahores, shared memeory, and linux system calls. We are tasked with designing a system to simulate an automatic teller machine.
 The system comprises of three concurrent processes - the ATM (user facing), the DB server that fetches data from the database, and the DB editor that makes changes to the database based on user actions. 
 
 ------------
