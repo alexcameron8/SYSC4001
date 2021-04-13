@@ -1,6 +1,6 @@
 # SYSC4001 
 ## About
-These are 3 assignments for SYSC4001 course taken with Professor Gabriel Wainer in Winter semester 2021. Th README's for the 3 assignments done throughout this course are provided below.
+These are 3 assignments for SYSC4001 course taken with Professor Gabriel Wainer in Winter semester 2021. The README's for the 3 assignments done throughout this course are provided below.
 
 
 
