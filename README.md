@@ -164,9 +164,9 @@ Perform the following commands to ensure all shared memory and shared message qu
 To view shared variables type:
 $ ipcs 
 To delete the shared message variables manually type the following in the console:
-$ ipcrm -M 4294967295
-$ ipcrm -Q 2234
-$ ipcrm -Q 4432
+- $ ipcrm -M 4294967295
+- $ ipcrm -Q 2234
+- $ ipcrm -Q 4432
 
 
 
