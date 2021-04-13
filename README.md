@@ -118,16 +118,16 @@ The system comprises of three concurrent processes - the ATM (user facing), the 
 ## Running the code
 To run the part 2 B) code you will need to open 2 terminal windows. Once you are in the directory which contains the assignment3 files, in the first terminal window you will write the following commands:
 Compile the 2 C files using these SPECIFIC files: (If DBServer.c or DBEditor.c are not compile with output and dbeditor then the program will not run properly since DBServer fork and execs these specific files)
-$ gcc DBServer.c -o output
-$ gcc DBEditor.c -o dbeditor
+- $ gcc DBServer.c -o output
+- $ gcc DBEditor.c -o dbeditor
 Run DBServer:
-$ ./output 
+- $ ./output 
 
 In the second terminal window once you have compiled and run the first C file you will perform the following commands:
 Compile the Atm.c C file (Not specific as to what file is opened):
-$ gcc Atm.c -o atm
+- $ gcc Atm.c -o atm
 Run the ATM component:
-./atm
+- ./atm
 
 Now there are 2 terminal windows open. The first window contains DBEditor and DBServer. In this window you can enter an account #, pin # and available funds. Once all these valid inputs are entered the user will be prompted
 whether they wish to continue and add this account to the database (database.txt). Upon clicking yes the DBEditor sends an update to DBServer to update the database with the entered account. The user will then be prompted to 
